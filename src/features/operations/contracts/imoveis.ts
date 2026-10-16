@@ -39,8 +39,8 @@ export interface ImoveisApi {
   list(input?: { readonly page?: number; readonly pageSize?: number }): Promise<Page<Imovel>>;
   get(imovelId: string): Promise<Imovel>;
   create(input: SaveImovelInput, idempotencyKey: string): Promise<Imovel>;
-  update(imovelId: string, input: SaveImovelInput): Promise<Imovel>;
-  deactivate(imovelId: string): Promise<void>;
+  update(imovelId: string, input: SaveImovelInput, expectedVersion: number): Promise<Imovel>;
+  deactivate(imovelId: string, expectedVersion: number): Promise<void>;
 }
 
 export type ImoveisApiFactory = (http: OperationsHttpClient) => ImoveisApi;

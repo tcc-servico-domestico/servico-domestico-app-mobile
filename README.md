@@ -1,50 +1,25 @@
-# Welcome to your Expo app 👋
+# Serviço Doméstico — aplicativo móvel
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Este repositório nasceu como uma simulação para a apresentação do TCC1. As telas existentes, a autenticação mockada e o fluxo visual daquela apresentação permanecem preservados.
 
-## Get started
+No TCC2, o mesmo repositório passa a hospedar também o módulo móvel do produto. Nesta etapa, ele contém somente os contratos TypeScript do módulo de operações; UC06, UC07 e UC09 ainda não são implementados aqui.
 
-1. Install dependencies
+## Estrutura
 
-   ```bash
-   npm install
-   ```
+- `src/app/`: rotas do Expo Router. Esta é a estrutura real de rotas do projeto, em vez do diretório `app` mencionado pelo template original do Expo.
+- `src/shared/contracts/`: contratos de sessão e de HTTP que são fornecidos pelo shell do aplicativo.
+- `src/features/operations/contracts/`: interfaces e tipos de imóveis, agendamentos, ofertas e pagamentos usados pelo módulo de operações.
 
-2. Start the app
+O módulo de operações recebe `OperationsSession` e `OperationsHttpClient` do shell. Ele não implementa armazenamento de token, renovação de sessão, URL-base, interceptadores, navegação raiz ou armazenamento seguro; esses itens permanecem sob responsabilidade do shell.
 
-   ```bash
-   npx expo start
-   ```
+## Contratos de integração
 
-In the output, you'll find options to open the app in a
+Os contratos REST e de eventos provisórios `v0` são mantidos no repositório de documentação, em `../../servico-domestico-docs/contratos/v0` neste workspace. Eles são a fonte de referência para as interfaces em `src/features/operations/contracts/`.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Desenvolvimento
 
 ```bash
-npm run reset-project
+npm install
+npm run lint
+npx tsc --noEmit
 ```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.

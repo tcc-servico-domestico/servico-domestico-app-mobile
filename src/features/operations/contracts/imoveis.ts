@@ -9,8 +9,8 @@ export interface Endereco {
   readonly cidade: string;
   readonly uf: string;
   readonly cep: string;
-  readonly latitude?: number;
-  readonly longitude?: number;
+  readonly latitude: number;
+  readonly longitude: number;
 }
 
 export interface Imovel {

@@ -29,6 +29,7 @@ export interface Agendamento {
   readonly inicioPrevisto: string;
   readonly fimPrevisto: string;
   readonly ofertaExpiraEmUtc: string | null;
+  readonly versaoOferta: number | null;
   readonly valor: number;
   readonly moeda: 'BRL';
   readonly status: AgendamentoStatus;

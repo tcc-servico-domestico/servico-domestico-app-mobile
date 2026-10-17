@@ -1,7 +1,7 @@
 import type { Page } from '@/src/features/operations/contracts/imoveis';
 import type { OperationsHttpClient } from '@/src/shared/contracts/http';
 
-export type OfertaStatus = 'Pendente' | 'Aceita' | 'Recusada' | 'Expirada';
+export type OfertaStatus = 'Pendente' | 'Aceita' | 'Recusada' | 'Expirada' | 'Cancelada';
 
 export interface Oferta {
   readonly id: string;

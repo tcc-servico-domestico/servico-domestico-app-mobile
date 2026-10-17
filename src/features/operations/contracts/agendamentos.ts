@@ -51,13 +51,6 @@ export interface CreateAgendamentoInput {
   readonly tarefas: readonly TarefaInput[];
 }
 
-export interface UpdateAgendamentoInput {
-  readonly inicioPrevisto?: string;
-  readonly fimPrevisto?: string;
-  readonly raioBuscaKm?: RaioBuscaKm;
-  readonly tarefas?: readonly TarefaInput[];
-}
-
 export interface ProfissionalCompativel {
   readonly profissionalId: string;
   readonly nomeExibicao?: string;
@@ -71,7 +64,6 @@ export interface AgendamentosApi {
   list(input?: { readonly page?: number; readonly pageSize?: number; readonly status?: AgendamentoStatus }): Promise<Page<Agendamento>>;
   get(agendamentoId: string): Promise<Agendamento>;
   create(input: CreateAgendamentoInput, idempotencyKey: string): Promise<Agendamento>;
-  update(agendamentoId: string, input: UpdateAgendamentoInput): Promise<Agendamento>;
   listCompatibleProfessionals(
     agendamentoId: string,
     input?: { readonly page?: number; readonly pageSize?: number },
@@ -82,10 +74,10 @@ export interface AgendamentosApi {
     expectedVersion: number,
     idempotencyKey: string,
   ): Promise<Agendamento>;
-  cancel(agendamentoId: string, idempotencyKey: string): Promise<Agendamento>;
-  start(agendamentoId: string, idempotencyKey: string): Promise<Agendamento>;
-  complete(agendamentoId: string, idempotencyKey: string): Promise<Agendamento>;
-  updateTask(agendamentoId: string, tarefaId: string, status: TarefaStatus): Promise<Tarefa>;
+  cancel(agendamentoId: string, motivo: string, expectedVersion: number, idempotencyKey: string): Promise<Agendamento>;
+  start(agendamentoId: string, expectedVersion: number, idempotencyKey: string): Promise<Agendamento>;
+  complete(agendamentoId: string, expectedVersion: number, idempotencyKey: string): Promise<Agendamento>;
+  updateTask(agendamentoId: string, tarefaId: string, status: TarefaStatus, expectedVersion: number, idempotencyKey: string): Promise<Tarefa>;
 }
 
 export type AgendamentosApiFactory = (http: OperationsHttpClient) => AgendamentosApi;

@@ -14,7 +14,7 @@ O módulo de operações recebe `OperationsSession` e `OperationsHttpClient` do 
 
 ## Contratos de integração
 
-Os contratos REST e de eventos provisórios `v0` são mantidos no repositório de documentação, em `../../servico-domestico-docs/contratos/v0` neste workspace. Eles são a fonte de referência para as interfaces em `src/features/operations/contracts/`.
+Os contratos REST e de eventos estáveis `v1` são mantidos no repositório de documentação, em `../../servico-domestico-docs/contratos/v1` neste workspace. Eles são a fonte de referência para as interfaces em `src/features/operations/contracts/`; o diretório `v0` permanece apenas como baseline histórico.
 
 ## Desenvolvimento
 

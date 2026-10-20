@@ -8,7 +8,7 @@ No TCC2, o mesmo repositório passa a hospedar também o módulo móvel do produ
 
 - `src/app/`: rotas do Expo Router. Esta é a estrutura real de rotas do projeto, em vez do diretório `app` mencionado pelo template original do Expo.
 - `src/shared/contracts/`: contratos de sessão e de HTTP que são fornecidos pelo shell do aplicativo.
-- `src/features/operations/contracts/`: interfaces e tipos de imóveis, agendamentos, ofertas e pagamentos usados pelo módulo de operações.
+- `src/features/operations/contracts/`: interfaces e tipos de imóveis, serviços, ofertas e pagamentos usados pelo módulo de operações.
 
 O módulo de operações recebe `OperationsSession` e `OperationsHttpClient` do shell. Ele não implementa armazenamento de token, renovação de sessão, URL-base, interceptadores, navegação raiz ou armazenamento seguro; esses itens permanecem sob responsabilidade do shell.
 

@@ -2,24 +2,27 @@ import type { Page } from '@/src/features/operations/contracts/imoveis';
 import type { OperationsHttpClient } from '@/src/shared/contracts/http';
 
 export type PagamentoStatus = 'Pendente' | 'Confirmado' | 'Falhou' | 'Estornado';
+export type TransacaoPagamentoStatus = PagamentoStatus | 'Liberado';
 export type CustodiaStatus = 'NaoIniciada' | 'Retida' | 'Liberada' | 'Estornada' | 'Falhou';
 
 export interface TransacaoPagamento {
   readonly id: string;
   readonly operacao: 'CriacaoCobranca' | 'ConfirmacaoPagamento' | 'LiberacaoCustodia' | 'Estorno';
-  readonly status: PagamentoStatus;
+  readonly status: TransacaoPagamentoStatus;
   readonly occurredAt: string;
   readonly gatewayId?: string;
 }
 
 export interface Pagamento {
   readonly id: string;
-  readonly agendamentoId: string;
+  readonly servicoId: string;
   readonly valor: number;
   readonly moeda: 'BRL';
   readonly descricao?: string;
   readonly status: PagamentoStatus;
   readonly custodiaStatus: CustodiaStatus;
+  readonly requestedAt: string;
+  readonly paidAt: string | null;
   readonly createdAt: string;
   readonly updatedAt: string | null;
   readonly aggregateVersion: number;
@@ -33,7 +36,7 @@ export interface CobrancaPix {
 }
 
 export interface CreateCobrancaPixInput {
-  readonly agendamentoId: string;
+  readonly servicoId: string;
   readonly valor: number;
   readonly descricao: string;
 }

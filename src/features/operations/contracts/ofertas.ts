@@ -4,8 +4,7 @@ import type { OperationsHttpClient } from '@/src/shared/contracts/http';
 export type OfertaStatus = 'Pendente' | 'Aceita' | 'Recusada' | 'Expirada' | 'Cancelada';
 
 export interface Oferta {
-  readonly id: string;
-  readonly agendamentoId: string;
+  readonly servicoId: string;
   readonly versaoOferta: number;
   readonly aggregateVersion: number;
   readonly inicioPrevisto: string;
@@ -14,14 +13,14 @@ export interface Oferta {
   readonly pagamentoConfirmado: true;
   readonly expiraEmUtc: string;
   readonly status: OfertaStatus;
-  readonly tarefas: readonly { readonly descricao: string; readonly ordem: number }[];
+  readonly checklists: readonly { readonly descricao: string; readonly ordem: number }[];
 }
 
 export interface OfertasApi {
   /** Retorna apenas ofertas dirigidas ao profissional autenticado. */
   list(input?: { readonly page?: number; readonly pageSize?: number; readonly status?: OfertaStatus }): Promise<Page<Oferta>>;
-  accept(ofertaId: string, versaoOferta: number, expectedVersion: number, idempotencyKey: string): Promise<Oferta>;
-  reject(ofertaId: string, versaoOferta: number, expectedVersion: number, idempotencyKey: string): Promise<Oferta>;
+  accept(servicoId: string, versaoOferta: number, expectedVersion: number, idempotencyKey: string): Promise<Oferta>;
+  reject(servicoId: string, versaoOferta: number, expectedVersion: number, idempotencyKey: string): Promise<Oferta>;
 }
 
 export type OfertasApiFactory = (http: OperationsHttpClient) => OfertasApi;

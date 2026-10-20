@@ -1,7 +1,7 @@
 import type { Page } from '@/src/features/operations/contracts/imoveis';
 import type { OperationsHttpClient } from '@/src/shared/contracts/http';
 
-export type AgendamentoStatus =
+export type ServicoStatus =
   | 'AguardandoPagamento'
   | 'AguardandoSelecao'
   | 'AguardandoAceite'
@@ -11,17 +11,17 @@ export type AgendamentoStatus =
   | 'Cancelado'
   | 'Expirado';
 
-export type TarefaStatus = 'Pendente' | 'EmAndamento' | 'Concluida';
+export type ChecklistStatus = 'Pendente' | 'EmAndamento' | 'Concluida';
 export type RaioBuscaKm = 5 | 10 | 20 | 30 | 50;
 
-export interface Tarefa {
+export interface Checklist {
   readonly id: string;
   readonly descricao: string;
   readonly ordem: number;
-  readonly status: TarefaStatus;
+  readonly status: ChecklistStatus;
 }
 
-export interface Agendamento {
+export interface Servico {
   readonly id: string;
   readonly imovelId: string;
   readonly profissionalId: string | null;
@@ -32,23 +32,23 @@ export interface Agendamento {
   readonly versaoOferta: number | null;
   readonly valor: number;
   readonly moeda: 'BRL';
-  readonly status: AgendamentoStatus;
-  readonly tarefas: readonly Tarefa[];
+  readonly status: ServicoStatus;
+  readonly checklists: readonly Checklist[];
   readonly aggregateVersion: number;
 }
 
-export interface TarefaInput {
+export interface ChecklistInput {
   readonly descricao: string;
   readonly ordem: number;
 }
 
-export interface CreateAgendamentoInput {
+export interface CreateServicoInput {
   readonly imovelId: string;
   readonly raioBuscaKm: RaioBuscaKm;
   readonly inicioPrevisto: string;
   readonly fimPrevisto: string;
   readonly valor: number;
-  readonly tarefas: readonly TarefaInput[];
+  readonly checklists: readonly ChecklistInput[];
 }
 
 export interface ProfissionalCompativel {
@@ -60,24 +60,24 @@ export interface ProfissionalCompativel {
   readonly posicaoRanking: number;
 }
 
-export interface AgendamentosApi {
-  list(input?: { readonly page?: number; readonly pageSize?: number; readonly status?: AgendamentoStatus }): Promise<Page<Agendamento>>;
-  get(agendamentoId: string): Promise<Agendamento>;
-  create(input: CreateAgendamentoInput, idempotencyKey: string): Promise<Agendamento>;
+export interface ServicosApi {
+  list(input?: { readonly page?: number; readonly pageSize?: number; readonly status?: ServicoStatus }): Promise<Page<Servico>>;
+  get(servicoId: string): Promise<Servico>;
+  create(input: CreateServicoInput, idempotencyKey: string): Promise<Servico>;
   listCompatibleProfessionals(
-    agendamentoId: string,
+    servicoId: string,
     input?: { readonly page?: number; readonly pageSize?: number },
   ): Promise<Page<ProfissionalCompativel>>;
   selectProfessional(
-    agendamentoId: string,
+    servicoId: string,
     profissionalId: string,
     expectedVersion: number,
     idempotencyKey: string,
-  ): Promise<Agendamento>;
-  cancel(agendamentoId: string, motivo: string, expectedVersion: number, idempotencyKey: string): Promise<Agendamento>;
-  start(agendamentoId: string, expectedVersion: number, idempotencyKey: string): Promise<Agendamento>;
-  complete(agendamentoId: string, expectedVersion: number, idempotencyKey: string): Promise<Agendamento>;
-  updateTask(agendamentoId: string, tarefaId: string, status: TarefaStatus, expectedVersion: number, idempotencyKey: string): Promise<Tarefa>;
+  ): Promise<Servico>;
+  cancel(servicoId: string, motivo: string, expectedVersion: number, idempotencyKey: string): Promise<Servico>;
+  start(servicoId: string, expectedVersion: number, idempotencyKey: string): Promise<Servico>;
+  complete(servicoId: string, expectedVersion: number, idempotencyKey: string): Promise<Servico>;
+  updateChecklist(servicoId: string, checklistId: string, status: ChecklistStatus, expectedVersion: number, idempotencyKey: string): Promise<Checklist>;
 }
 
-export type AgendamentosApiFactory = (http: OperationsHttpClient) => AgendamentosApi;
+export type ServicosApiFactory = (http: OperationsHttpClient) => ServicosApi;

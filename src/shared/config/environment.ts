@@ -1,5 +1,6 @@
 export interface AppEnvironment {
   readonly apiBaseUrl: string;
+  readonly paymentApiBaseUrl: string;
   readonly mobileConfirmationBaseUrl: string;
 }
 
@@ -21,6 +22,7 @@ export function readEnvironment(
 ): AppEnvironment {
   return {
     apiBaseUrl: requiredUrl(source.EXPO_PUBLIC_API_BASE_URL, 'EXPO_PUBLIC_API_BASE_URL', ['http:', 'https:']),
+    paymentApiBaseUrl: requiredUrl(source.EXPO_PUBLIC_PAYMENT_API_BASE_URL, 'EXPO_PUBLIC_PAYMENT_API_BASE_URL', ['http:', 'https:']),
     mobileConfirmationBaseUrl: requiredUrl(
       source.EXPO_PUBLIC_MOBILE_CONFIRMATION_BASE_URL,
       'EXPO_PUBLIC_MOBILE_CONFIRMATION_BASE_URL',

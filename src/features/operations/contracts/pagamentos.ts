@@ -11,6 +11,7 @@ export interface TransacaoPagamento {
   readonly status: TransacaoPagamentoStatus;
   readonly occurredAt: string;
   readonly gatewayId?: string;
+  readonly motivo?: string | null;
 }
 
 export interface Pagamento {
@@ -35,16 +36,9 @@ export interface CobrancaPix {
   readonly expiraEm: string;
 }
 
-export interface CreateCobrancaPixInput {
-  readonly servicoId: string;
-  readonly valor: number;
-  readonly descricao: string;
-}
-
 export interface PagamentosApi {
   list(input?: { readonly page?: number; readonly pageSize?: number; readonly status?: PagamentoStatus }): Promise<Page<Pagamento>>;
   get(pagamentoId: string): Promise<Pagamento>;
-  createPixCharge(input: CreateCobrancaPixInput, idempotencyKey: string): Promise<CobrancaPix>;
 }
 
 export type PagamentosApiFactory = (http: OperationsHttpClient) => PagamentosApi;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import * as Clipboard from 'expo-clipboard';
+import { useRouter } from 'expo-router';
 import {
   ActivityIndicator, Button, FlatList, Modal, Pressable, RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, View,
@@ -11,6 +11,7 @@ import type { Checklist, ProfissionalCompativel, Servico, ServicosApi } from '@/
 import type { OperationsSession } from '@/src/shared/contracts/session';
 import { HttpProblemError } from '@/src/shared/contracts/http';
 import { createIdempotencyKey } from '@/src/features/operations/idempotency';
+import { paymentTrackingStore } from '@/src/features/operations/pagamentos/paymentTrackingStore';
 import { actionableChecklist, canCancel, canChooseProfessional, canComplete, canRespondToOffer, canStart, nextChecklistStatus } from './policy';
 import { allowedRadii, emptyServicoForm, toCreateServicoInput, validateServico, type ServicoFormErrors, type ServicoFormValues } from './validation';
 
@@ -46,6 +47,7 @@ function updateCollection(items: readonly Servico[], updated: Servico): readonly
 }
 
 export function ServicosScreen({ servicosApi, ofertasApi, imoveisApi, session }: Props) {
+  const router = useRouter();
   const [screen, setScreen] = useState<Screen>({ name: 'list' });
   const [servicos, setServicos] = useState<readonly Servico[]>([]);
   const [ofertas, setOfertas] = useState<readonly Oferta[]>([]);
@@ -55,7 +57,6 @@ export function ServicosScreen({ servicosApi, ofertasApi, imoveisApi, session }:
   const [total, setTotal] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [mutating, setMutating] = useState(false);
-  const [pix, setPix] = useState<{ readonly code: string; readonly expiresAt: string } | null>(null);
 
   const isClient = session.roles.includes('Cliente');
   const isProfessional = session.roles.includes('Profissional');
@@ -86,7 +87,6 @@ export function ServicosScreen({ servicosApi, ofertasApi, imoveisApi, session }:
     setMessage(null);
     try {
       const servico = await servicosApi.get(id);
-      setPix(null);
       setScreen({ name: 'detail', servico });
     } catch (error) {
       setMessage(friendlyError(error));
@@ -114,13 +114,19 @@ export function ServicosScreen({ servicosApi, ofertasApi, imoveisApi, session }:
     setMutating(true);
     try {
       const created = await servicosApi.create(input, key);
+      await paymentTrackingStore.save(session.userId, {
+        pagamentoId: created.cobrancaPix.pagamentoId,
+        servicoId: created.servico.id,
+        pixCopiaECola: created.cobrancaPix.pixCopiaECola,
+        expiraEm: created.cobrancaPix.expiraEm,
+      });
       setServicos((items) => updateCollection(items, created.servico));
-      setPix({ code: created.cobrancaPix.pixCopiaECola, expiresAt: created.cobrancaPix.expiraEm });
       setScreen({ name: 'detail', servico: created.servico });
+      router.push({ pathname: './pagamentos', params: { pagamentoId: created.cobrancaPix.pagamentoId } });
     } finally {
       setMutating(false);
     }
-  }, [servicosApi]);
+  }, [router, servicosApi, session.userId]);
 
   const operate = useCallback(async (operation: (servico: Servico, key: string) => Promise<Servico>, servico: Servico) => {
     setMutating(true);
@@ -160,8 +166,8 @@ export function ServicosScreen({ servicosApi, ofertasApi, imoveisApi, session }:
   if (screen.name === 'create') return <ServicoForm api={imoveisApi} pending={mutating} onBack={() => setScreen({ name: 'list' })} onSave={saveServico} />;
   if (screen.name === 'matching') return <MatchingScreen servico={screen.servico} api={servicosApi} pending={mutating} onBack={() => setScreen({ name: 'detail', servico: screen.servico })} onSelect={selectProfessional} />;
   if (screen.name === 'detail') return <ServicoDetail
-    servico={screen.servico} roles={session.roles} pending={mutating} pix={pix} message={message}
-    onBack={() => { setPix(null); setScreen({ name: 'list' }); }}
+    servico={screen.servico} roles={session.roles} pending={mutating} message={message}
+    onBack={() => { setScreen({ name: 'list' }); }}
     onReload={() => void refreshDetail(screen.servico.id)}
     onChoose={() => setScreen({ name: 'matching', servico: screen.servico })}
     onCancel={(motivo) => operate((current, key) => servicosApi.cancel(current.id, motivo, current.aggregateVersion, key), screen.servico)}
@@ -251,12 +257,10 @@ function MatchingScreen({ servico, api, pending, onBack, onSelect }: { readonly 
   return <View style={styles.container}><Button title="Voltar" onPress={onBack} disabled={pending} /><Text style={styles.title}>Profissionais compatíveis</Text>{loading ? <Center label="Carregando profissionais" /> : null}{error ? <ErrorPanel message={error} onRetry={() => void load()} /> : null}{!loading && !error && items.length === 0 ? <Text style={styles.empty}>Não há profissional compatível para o raio e horário escolhidos.</Text> : null}<FlatList data={items} keyExtractor={(item) => item.profissionalId} renderItem={({ item }) => <View style={styles.card}><Text style={styles.cardTitle}>{item.nomeExibicao ?? 'Profissional compatível'}</Text><Text>#{item.posicaoRanking} · {item.avaliacaoMedia.toFixed(1)} ({item.quantidadeAvaliacoes} avaliações) · {item.distanciaKm.toFixed(1)} km</Text><Button title="Selecionar" disabled={pending} onPress={() => void onSelect(servico, item.profissionalId)} /></View>} /></View>;
 }
 
-function ServicoDetail({ servico, roles, pending, pix, message, onBack, onReload, onChoose, onCancel, onStart, onChecklist, onComplete }: { readonly servico: Servico; readonly roles: OperationsSession['roles']; readonly pending: boolean; readonly pix: { readonly code: string; readonly expiresAt: string } | null; readonly message: string | null; readonly onBack: () => void; readonly onReload: () => void; readonly onChoose: () => void; readonly onCancel: (motivo: string) => void; readonly onStart: () => void; readonly onChecklist: (checklist: Checklist, status: NonNullable<ReturnType<typeof nextChecklistStatus>>) => Promise<void>; readonly onComplete: () => void }) {
-  const [showCancel, setShowCancel] = useState(false); const [motivo, setMotivo] = useState(''); const [copyMessage, setCopyMessage] = useState<string | null>(null);
+function ServicoDetail({ servico, roles, pending, message, onBack, onReload, onChoose, onCancel, onStart, onChecklist, onComplete }: { readonly servico: Servico; readonly roles: OperationsSession['roles']; readonly pending: boolean; readonly message: string | null; readonly onBack: () => void; readonly onReload: () => void; readonly onChoose: () => void; readonly onCancel: (motivo: string) => void; readonly onStart: () => void; readonly onChecklist: (checklist: Checklist, status: NonNullable<ReturnType<typeof nextChecklistStatus>>) => Promise<void>; readonly onComplete: () => void }) {
+  const [showCancel, setShowCancel] = useState(false); const [motivo, setMotivo] = useState('');
   const next = actionableChecklist(servico); const nextStatus = next ? nextChecklistStatus(next) : null;
-  const copyPix = async () => { if (!pix) return; await Clipboard.setStringAsync(pix.code); setCopyMessage('Código Pix copiado.'); };
   return <ScrollView contentContainerStyle={styles.container}><Button title="Voltar" onPress={onBack} disabled={pending} /><Text style={styles.title}>Detalhe do serviço</Text>{message ? <Text accessibilityRole="alert" style={styles.errorText}>{message}</Text> : null}<Text>Status: {servico.status}</Text><Text>Imóvel vinculado: {servico.imovelId}</Text><Text>Início: {formatDate(servico.inicioPrevisto)}</Text><Text>Fim: {formatDate(servico.fimPrevisto)}</Text><Text>Valor: {money(servico.valor)}</Text><Text>Raio: {servico.raioBuscaKm} km</Text>{servico.profissionalId ? <Text>Profissional selecionado.</Text> : null}
-    {pix ? <View style={styles.pix}><Text style={styles.cardTitle}>Pagamento Pix</Text><Text>Expira em {formatDate(pix.expiresAt)}</Text><Text selectable>{pix.code}</Text><Button title="Copiar código Pix" onPress={() => void copyPix()} />{copyMessage ? <Text accessibilityLiveRegion="polite">{copyMessage}</Text> : null}</View> : null}
     <Text style={styles.label}>Checklists</Text>{[...servico.checklists].sort((a, b) => a.ordem - b.ordem).map((item) => <View key={item.id} style={styles.checklist}><Text>{item.ordem}. {item.descricao} — {item.status}</Text>{next?.id === item.id && nextStatus && servico.status === 'EmExecucao' ? <Button title={`Marcar como ${nextStatus}`} disabled={pending} onPress={() => void onChecklist(item, nextStatus)} /> : null}</View>)}
     {canChooseProfessional(roles, servico.status) ? <Button title="Escolher profissional" disabled={pending} onPress={onChoose} /> : null}{canCancel(roles, servico.status) ? <Button title="Cancelar serviço" color="#a00" disabled={pending} onPress={() => setShowCancel(true)} /> : null}{canStart(roles, servico.status) ? <Button title="Iniciar serviço" disabled={pending} onPress={onStart} /> : null}{canComplete(roles, servico) ? <Button title="Concluir serviço" disabled={pending} onPress={onComplete} /> : null}<Button title="Atualizar serviço" disabled={pending} onPress={onReload} />
     <Modal transparent visible={showCancel} animationType="fade" onRequestClose={() => setShowCancel(false)}><View style={styles.modalOverlay}><View style={styles.modalCard}><Text style={styles.modalTitle}>Cancelar serviço?</Text><Field label="Motivo" value={motivo} onChangeText={setMotivo} required /><View style={styles.inline}><Button title="Voltar" onPress={() => setShowCancel(false)} disabled={pending} /><Button title="Confirmar cancelamento" color="#a00" disabled={pending || motivo.trim().length < 1 || motivo.trim().length > 300} onPress={() => { setShowCancel(false); onCancel(motivo.trim()); }} /></View></View></View></Modal>
@@ -272,5 +276,5 @@ function ErrorPanel({ message, onRetry }: { readonly message: string; readonly o
 function Center({ label }: { readonly label: string }) { return <View style={styles.center}><ActivityIndicator accessibilityLabel={label} /></View>; }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 16, gap: 12 }, center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 }, heading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, title: { fontSize: 22, fontWeight: '700' }, subtitle: { fontSize: 18, fontWeight: '700' }, label: { fontWeight: '600' }, card: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, gap: 6, marginVertical: 6 }, cardTitle: { fontWeight: '700' }, choice: { borderWidth: 1, borderColor: '#999', borderRadius: 6, padding: 10, gap: 3 }, choiceSelected: { borderColor: '#1769aa', borderWidth: 2, backgroundColor: '#eef7ff' }, radius: { borderWidth: 1, borderColor: '#999', borderRadius: 6, padding: 8 }, inline: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }, field: { gap: 4 }, input: { borderWidth: 1, borderColor: '#777', borderRadius: 4, padding: 10, minHeight: 44 }, error: { borderColor: '#a00', borderWidth: 1, padding: 8, gap: 8 }, errorText: { color: '#a00' }, empty: { padding: 16, textAlign: 'center' }, checklistRow: { borderTopWidth: 1, borderColor: '#ddd', paddingTop: 8, gap: 8 }, checklist: { padding: 8, borderWidth: 1, borderColor: '#ddd', borderRadius: 6, gap: 6 }, pix: { borderWidth: 1, borderColor: '#1769aa', backgroundColor: '#eef7ff', padding: 12, borderRadius: 8, gap: 8 }, section: { marginBottom: 12 }, modalOverlay: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.45)' }, modalCard: { backgroundColor: '#fff', padding: 20, borderRadius: 8, gap: 12 }, modalTitle: { fontSize: 20, fontWeight: '700' },
+  container: { flexGrow: 1, padding: 16, gap: 12 }, center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 }, heading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, title: { fontSize: 22, fontWeight: '700' }, subtitle: { fontSize: 18, fontWeight: '700' }, label: { fontWeight: '600' }, card: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, gap: 6, marginVertical: 6 }, cardTitle: { fontWeight: '700' }, choice: { borderWidth: 1, borderColor: '#999', borderRadius: 6, padding: 10, gap: 3 }, choiceSelected: { borderColor: '#1769aa', borderWidth: 2, backgroundColor: '#eef7ff' }, radius: { borderWidth: 1, borderColor: '#999', borderRadius: 6, padding: 8 }, inline: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }, field: { gap: 4 }, input: { borderWidth: 1, borderColor: '#777', borderRadius: 4, padding: 10, minHeight: 44 }, error: { borderColor: '#a00', borderWidth: 1, padding: 8, gap: 8 }, errorText: { color: '#a00' }, empty: { padding: 16, textAlign: 'center' }, checklistRow: { borderTopWidth: 1, borderColor: '#ddd', paddingTop: 8, gap: 8 }, checklist: { padding: 8, borderWidth: 1, borderColor: '#ddd', borderRadius: 6, gap: 6 }, section: { marginBottom: 12 }, modalOverlay: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.45)' }, modalCard: { backgroundColor: '#fff', padding: 20, borderRadius: 8, gap: 12 }, modalTitle: { fontSize: 20, fontWeight: '700' },
 });

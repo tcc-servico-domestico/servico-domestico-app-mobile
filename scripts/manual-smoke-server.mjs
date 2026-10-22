@@ -20,6 +20,16 @@ let offer = {
   servicoId: 'service-accepted', versaoOferta: 1, aggregateVersion: 1, inicioPrevisto: iso(48), fimPrevisto: iso(52), valor: 120,
   pagamentoConfirmado: true, expiraEmUtc: iso(2), status: 'Pendente', checklists: [{ descricao: 'Limpar cozinha', ordem: 1 }],
 };
+let payments = [];
+
+function newPayment(service, id) {
+  return {
+    id, servicoId: service.id, valor: service.valor, moeda: 'BRL', descricao: 'Serviço doméstico simulado',
+    status: 'Pendente', custodiaStatus: 'NaoIniciada', requestedAt: now.toISOString(), paidAt: null,
+    createdAt: now.toISOString(), updatedAt: null, aggregateVersion: 1,
+    transacoes: [{ id: `transaction-${id}`, operacao: 'CriacaoCobranca', status: 'Pendente', occurredAt: now.toISOString(), gatewayId: `gateway-${id}` }],
+  };
+}
 
 function token() {
   const payload = Buffer.from(JSON.stringify({ sub: 'cliente-profissional-teste', role: ['Cliente', 'Profissional'], exp: 4_102_444_800 })).toString('base64url');
@@ -46,10 +56,31 @@ http.createServer(async (request, response) => {
   if (request.method === 'GET' && pathname === '/api/v1/imoveis') return json(response, 200, { items: [imovel], page: 1, pageSize: 100, total: 1 });
   if (request.method === 'GET' && pathname === '/api/v1/servicos') return json(response, 200, { items: services, page: 1, pageSize: 20, total: services.length });
   if (request.method === 'GET' && pathname === '/api/v1/ofertas') return json(response, 200, { items: [offer], page: 1, pageSize: 20, total: 1 });
+  if (request.method === 'GET' && pathname === '/api/v1/pagamentos') return json(response, 200, { items: payments, page: 1, pageSize: 100, total: payments.length });
+  const paymentMatch = /^\/api\/v1\/pagamentos\/([^/]+)$/.exec(pathname);
+  if (request.method === 'GET' && paymentMatch) {
+    const payment = payments.find((item) => item.id === paymentMatch[1]);
+    return payment ? json(response, 200, payment) : json(response, 404, { title: 'Pagamento não encontrado', status: 404 });
+  }
+  const transitionMatch = /^\/__mock\/pagamentos\/([^/]+)\/(Confirmado|Falhou|Liberado|Estornado)$/.exec(pathname);
+  if (request.method === 'POST' && transitionMatch) {
+    const payment = payments.find((item) => item.id === transitionMatch[1]);
+    if (!payment) return json(response, 404, { title: 'Pagamento não encontrado', status: 404 });
+    const status = transitionMatch[2]; const occurredAt = new Date().toISOString();
+    if (status === 'Confirmado') { payment.status = 'Confirmado'; payment.custodiaStatus = 'Retida'; payment.paidAt = occurredAt; }
+    if (status === 'Falhou') { payment.status = 'Falhou'; payment.custodiaStatus = 'Falhou'; }
+    if (status === 'Liberado') { payment.status = 'Confirmado'; payment.custodiaStatus = 'Liberada'; }
+    if (status === 'Estornado') { payment.status = 'Estornado'; payment.custodiaStatus = 'Estornada'; }
+    payment.aggregateVersion += 1; payment.updatedAt = occurredAt;
+    payment.transacoes.push({ id: `transaction-${payment.aggregateVersion}`, operacao: status === 'Liberado' ? 'LiberacaoCustodia' : status === 'Estornado' ? 'Estorno' : 'ConfirmacaoPagamento', status: status === 'Liberado' ? 'Liberado' : payment.status, occurredAt, motivo: status === 'Falhou' ? 'Falha simulada' : status === 'Estornado' ? 'Estorno simulado' : null });
+    return json(response, 200, payment);
+  }
   if (request.method === 'POST' && pathname === '/api/v1/servicos') {
     const input = await body(request); const created = { ...newService(`service-${services.length + 1}`, 'AguardandoPagamento'), ...input, aggregateVersion: 1, checklists: input.checklists.map((item) => ({ ...item, id: `${item.ordem}`.padStart(8, '0'), status: 'Pendente' })) };
     services = [created, ...services];
-    return json(response, 201, { servico: created, cobrancaPix: { pagamentoId: '99999999-9999-4999-8999-999999999999', pixCopiaECola: 'PIX-COPIA-E-COLA-LOCAL', expiraEm: iso(24) } });
+    const paymentId = `99999999-9999-4999-8999-${String(payments.length + 1).padStart(12, '0')}`;
+    payments = [newPayment(created, paymentId), ...payments];
+    return json(response, 201, { servico: created, cobrancaPix: { pagamentoId: paymentId, pixCopiaECola: 'PIX-COPIA-E-COLA-LOCAL', expiraEm: iso(24) } });
   }
   const match = /^\/api\/v1\/servicos\/([^/]+)(?:\/(.*))?$/.exec(pathname);
   if (!match) return json(response, 404, { title: 'Não encontrado', status: 404 });

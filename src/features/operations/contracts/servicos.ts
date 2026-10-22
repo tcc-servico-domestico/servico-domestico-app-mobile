@@ -51,6 +51,17 @@ export interface CreateServicoInput {
   readonly checklists: readonly ChecklistInput[];
 }
 
+export interface CobrancaPixCriada {
+  readonly pagamentoId: string;
+  readonly pixCopiaECola: string;
+  readonly expiraEm: string;
+}
+
+export interface CriacaoServico {
+  readonly servico: Servico;
+  readonly cobrancaPix: CobrancaPixCriada;
+}
+
 export interface ProfissionalCompativel {
   readonly profissionalId: string;
   readonly nomeExibicao?: string;
@@ -63,7 +74,7 @@ export interface ProfissionalCompativel {
 export interface ServicosApi {
   list(input?: { readonly page?: number; readonly pageSize?: number; readonly status?: ServicoStatus }): Promise<Page<Servico>>;
   get(servicoId: string): Promise<Servico>;
-  create(input: CreateServicoInput, idempotencyKey: string): Promise<Servico>;
+  create(input: CreateServicoInput, idempotencyKey: string): Promise<CriacaoServico>;
   listCompatibleProfessionals(
     servicoId: string,
     input?: { readonly page?: number; readonly pageSize?: number },

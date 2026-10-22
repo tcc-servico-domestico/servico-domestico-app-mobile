@@ -3,6 +3,7 @@ import React, { createContext, ReactNode, useCallback, useContext, useEffect, us
 import type { IdentityApi, LoginInput, RegisterInput } from '@/src/features/identity/contracts';
 import { identityApi as defaultIdentityApi, sessionStore as defaultSessionStore } from '@/src/shared/runtime';
 import type { OperationsSession, SessionStore } from '@/src/shared/contracts/session';
+import { paymentTrackingStore } from '@/src/features/operations/pagamentos/paymentTrackingStore';
 
 type AuthContextType = {
   readonly status: 'loading' | 'anonymous' | 'authenticated';
@@ -54,10 +55,11 @@ export function AuthProvider({ children, api = defaultIdentityApi, store = defau
   }, [api, store]);
 
   const logout = useCallback(async () => {
+    if (session) await paymentTrackingStore.clear(session.userId);
     await store.clear();
     setSession(null);
     setStatus('anonymous');
-  }, [store]);
+  }, [session, store]);
 
   const value = useMemo<AuthContextType>(() => ({
     status,

@@ -10,6 +10,7 @@ export default function TabsLayout() {
           headerRight: () => null,
         }}
       />
+      <Tabs.Screen name="pagamentos" options={{ title: 'Pagamentos' }} />
     </Tabs>
   );
 }

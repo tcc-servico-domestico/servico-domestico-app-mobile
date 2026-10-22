@@ -4,27 +4,30 @@ export type ImovelStatus = 'Ativo' | 'Inativo';
 
 export interface Endereco {
   readonly logradouro: string;
-  readonly numero: string;
-  readonly complemento?: string;
+  readonly numero: number | null;
+  readonly complemento: string | null;
+  readonly bairro: string;
   readonly cidade: string;
   readonly uf: string;
   readonly cep: string;
-  readonly latitude: number;
-  readonly longitude: number;
 }
 
 export interface Imovel {
   readonly id: string;
-  readonly descricao: string;
-  readonly metragemQuadrada: number;
+  readonly descricao: string | null;
+  readonly metragemQuadrada: number | null;
+  readonly latitude: number;
+  readonly longitude: number;
   readonly endereco: Endereco;
   readonly status: ImovelStatus;
   readonly aggregateVersion: number;
 }
 
 export interface SaveImovelInput {
-  readonly descricao: string;
-  readonly metragemQuadrada: number;
+  readonly descricao: string | null;
+  readonly metragemQuadrada: number | null;
+  readonly latitude: number;
+  readonly longitude: number;
   readonly endereco: Endereco;
 }
 

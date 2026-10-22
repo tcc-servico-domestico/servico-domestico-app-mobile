@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import type { OperationsSession, SessionStore } from '@/src/shared/contracts/session';
 
 const SESSION_KEY = 'servico-domestico.session.v1';
+const supportsSecureStore = typeof window === 'undefined';
 
 let volatileSession: OperationsSession | null = null;
 const listeners = new Set<(session: OperationsSession | null) => void>();
@@ -17,7 +18,8 @@ export function isSessionExpired(session: OperationsSession, now = Date.now()): 
 
 export const secureSessionStore: SessionStore = {
   async load() {
-    const serialized = (await SecureStore.getItemAsync(SESSION_KEY)) ??
+    const persisted = supportsSecureStore ? await SecureStore.getItemAsync(SESSION_KEY) : null;
+    const serialized = persisted ??
       (volatileSession ? JSON.stringify(volatileSession) : null);
     if (!serialized) return null;
 
@@ -30,13 +32,13 @@ export const secureSessionStore: SessionStore = {
   },
   async save(session, persistent) {
     volatileSession = session;
-    if (persistent) await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(session));
-    else await SecureStore.deleteItemAsync(SESSION_KEY);
+    if (supportsSecureStore && persistent) await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(session));
+    else if (supportsSecureStore) await SecureStore.deleteItemAsync(SESSION_KEY);
     publish(session);
   },
   async clear() {
     volatileSession = null;
-    await SecureStore.deleteItemAsync(SESSION_KEY);
+    if (supportsSecureStore) await SecureStore.deleteItemAsync(SESSION_KEY);
     publish(null);
   },
   subscribe(listener) {

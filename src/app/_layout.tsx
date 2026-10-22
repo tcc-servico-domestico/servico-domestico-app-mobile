@@ -1,7 +1,8 @@
-import { Stack } from 'expo-router';
+import { SplashScreen, Stack } from 'expo-router';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { useEffect } from 'react';
-import { SplashScreen, router } from 'expo-router';
+
+void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   return (
@@ -12,19 +13,23 @@ export default function RootLayout() {
 }
 
 function RootNavigation() {
-  const { isAuthenticated } = useAuth();
+  const { status } = useAuth();
 
   useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+    if (status !== 'loading') void SplashScreen.hideAsync();
+  }, [status]);
+
+  if (status === 'loading') return null;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {isAuthenticated ? (
+      <Stack.Protected guard={status === 'authenticated'}>
         <Stack.Screen name="(tabs)" />
-      ) : (
+      </Stack.Protected>
+      <Stack.Protected guard={status === 'anonymous'}>
         <Stack.Screen name="(auth)" />
-      )}
+      </Stack.Protected>
+      <Stack.Screen name="confirmar-email" options={{ headerShown: true, title: 'Confirmar e-mail' }} />
     </Stack>
   );
 }

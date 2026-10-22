@@ -1,22 +1,37 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { TextInput, Button } from 'react-native-paper';
+import { TextInput, Button, HelperText } from 'react-native-paper';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/src/context/AuthContext';
+import { HttpProblemError } from '@/src/shared/contracts/http';
 
 export default function CadastroScreen() {
   const router = useRouter();
+  const { register } = useAuth();
 
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleCadastro = () => {
-    // Lógica de cadastro
-    console.log({ email, senha });
-
-    // Após cadastro, navegar para as tabs ou para login
+  const handleCadastro = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    setMessage(null);
+    setError(null);
+    try {
+      await register({ email: email.trim(), senha });
+      setMessage('Cadastro recebido. Verifique seu e-mail para confirmar a conta.');
+    } catch (cause) {
+      setError(cause instanceof HttpProblemError ? cause.message : 'Não foi possível criar a conta.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleVoltarLogin = () => {
+    router.replace('/(auth)/login');
   };
 
   return (
@@ -32,6 +47,10 @@ export default function CadastroScreen() {
         underlineColor="transparent"
         placeholder="Email"
         placeholderTextColor="#ccc"
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+        accessibilityLabel="E-mail"
       />
 
       <TextInput
@@ -44,13 +63,21 @@ export default function CadastroScreen() {
         secureTextEntry
         placeholder="Senha"
         placeholderTextColor="#ccc"
+        autoComplete="new-password"
+        accessibilityLabel="Senha"
       />
+
+      <HelperText type="error" visible={Boolean(error)} accessibilityLiveRegion="polite">{error}</HelperText>
+      <HelperText type="info" visible={Boolean(message)} accessibilityLiveRegion="polite">{message}</HelperText>
 
       <Button
         mode="contained"
         onPress={handleCadastro}
         style={styles.cadastroButton}
         contentStyle={{ height: 50 }}
+        loading={submitting}
+        disabled={submitting || !email.trim() || senha.length < 8}
+        accessibilityLabel="Cadastrar"
       >
         Cadastrar
       </Button>

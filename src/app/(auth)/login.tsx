@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { TextInput, Button, Checkbox } from 'react-native-paper';
+import { TextInput, Button, Checkbox, HelperText } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/context/AuthContext';
+import { HttpProblemError } from '@/src/shared/contracts/http';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -11,11 +12,21 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [manterConectado, setManterConectado] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = () => {
-    // Aqui você pode colocar sua lógica de autenticação
-    console.log({ email, senha, manterConectado });
-    router.push('/(tabs)/home');
+  const handleLogin = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await login({ usuario: email.trim(), senha }, manterConectado);
+      router.replace('/(tabs)/home');
+    } catch (cause) {
+      setError(cause instanceof HttpProblemError ? cause.message : 'Não foi possível entrar. Tente novamente.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleEsqueciSenha = () => {
@@ -41,6 +52,10 @@ export default function LoginScreen() {
         underlineColor="transparent"
         placeholder="Email"
         placeholderTextColor="#ccc"
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+        accessibilityLabel="E-mail"
       />
 
       <TextInput
@@ -53,6 +68,8 @@ export default function LoginScreen() {
         secureTextEntry
         placeholder="Senha"
         placeholderTextColor="#ccc"
+        autoComplete="current-password"
+        accessibilityLabel="Senha"
       />
 
       <View style={styles.row}> 
@@ -71,11 +88,18 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View>
 
+      <HelperText type="error" visible={Boolean(error)} accessibilityLiveRegion="polite">
+        {error}
+      </HelperText>
+
       <Button
         mode="contained"
         onPress={handleLogin}
         style={styles.loginButton}
         contentStyle={{ height: 50 }}
+        loading={submitting}
+        disabled={submitting || !email.trim() || !senha}
+        accessibilityLabel="Entrar"
       >
         Entrar
       </Button>

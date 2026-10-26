@@ -37,3 +37,10 @@ npm install
 npm run lint
 npx tsc --noEmit
 ```
+
+## Homologação
+
+Copie `.env.homologacao.example` para `.env.local` antes de iniciar o Expo para
+testar identidade no ambiente remoto. Essa configuração contém somente URLs
+públicas HTTPS e nenhum segredo. Fora de `development`, o app rejeita URL HTTP
+ou `localhost` como API base.

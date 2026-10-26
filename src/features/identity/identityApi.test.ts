@@ -31,4 +31,37 @@ describe('identityApi', () => {
 
     expect(get).toHaveBeenCalledWith('/Usuario/confirmar-email/a%2Fb%2Bc%3D');
   });
+
+  it('rejects a token already expired before persisting the session', async () => {
+    const http = {
+      post: vi.fn().mockResolvedValue({
+        accessToken: token({ sub: 'user-1', role: 'Cliente', exp: 1_000 }),
+        tokenType: 'Bearer',
+        expiresIn: 900,
+      }),
+    } as unknown as OperationsHttpClient;
+
+    await expect(createIdentityApi(http, () => 1_000_001).login({ usuario: 'user@example.com', senha: 'secret' }))
+      .rejects.toThrow('já está expirada');
+  });
+
+  it('executes the identity journey against a mock without putting the confirmation token in the request body', async () => {
+    const post = vi.fn()
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        accessToken: token({ sub: 'user-1', role: 'Cliente', exp: 1_800_000_000 }),
+        tokenType: 'Bearer',
+        expiresIn: 900,
+      });
+    const get = vi.fn().mockResolvedValue(undefined);
+    const api = createIdentityApi({ post, get } as unknown as OperationsHttpClient);
+
+    await api.register({ email: 'pessoa@example.invalid', senha: 'senha-de-teste' });
+    await api.confirmEmail('token-opaco');
+    await api.login({ usuario: 'pessoa@example.invalid', senha: 'senha-de-teste' });
+
+    expect(post).toHaveBeenNthCalledWith(1, '/Usuario', { email: 'pessoa@example.invalid', senha: 'senha-de-teste' });
+    expect(get).toHaveBeenCalledWith('/Usuario/confirmar-email/token-opaco');
+    expect(post).toHaveBeenNthCalledWith(2, '/Autenticacao/login', { usuario: 'pessoa@example.invalid', senha: 'senha-de-teste' });
+  });
 });

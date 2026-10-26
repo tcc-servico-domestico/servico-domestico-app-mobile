@@ -31,6 +31,9 @@ export function createIdentityApi(http: OperationsHttpClient, now = () => Date.n
       const expiresAt = typeof claims.exp === 'number'
         ? new Date(claims.exp * 1000).toISOString()
         : new Date(now() + response.expiresIn * 1000).toISOString();
+      if (new Date(expiresAt).getTime() <= now()) {
+        throw new Error('A sessão recebida já está expirada. Entre novamente.');
+      }
 
       return {
         status: 'authenticated',

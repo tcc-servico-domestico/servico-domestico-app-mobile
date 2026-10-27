@@ -78,11 +78,12 @@ export default function CadastroScreen() {
         loading={submitting}
         disabled={submitting || !email.trim() || senha.length < 8}
         accessibilityLabel="Cadastrar"
+        accessibilityState={{ disabled: submitting || !email.trim() || senha.length < 8, busy: submitting }}
       >
         Cadastrar
       </Button>
 
-      <TouchableOpacity onPress={handleVoltarLogin}>
+      <TouchableOpacity onPress={handleVoltarLogin} accessibilityRole="button" accessibilityLabel="Já tenho conta; ir para login">
         <Text style={styles.loginText}>Já tenho conta</Text>
       </TouchableOpacity>
     </View>

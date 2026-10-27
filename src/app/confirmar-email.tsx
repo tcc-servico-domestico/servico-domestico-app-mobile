@@ -36,8 +36,8 @@ export default function ConfirmEmailScreen() {
 
   return (
     <View style={styles.container} accessibilityLiveRegion="polite">
-      {state === 'loading' && <ActivityIndicator size="large" />}
-      <Text variant="titleMedium" style={styles.message}>{message}</Text>
+      {state === 'loading' && <ActivityIndicator size="large" accessibilityLabel="Confirmando e-mail" />}
+      <Text variant="titleMedium" style={styles.message} accessibilityRole={state === 'error' ? 'alert' : undefined}>{message}</Text>
       {state !== 'loading' && (
         <Button mode="contained" onPress={() => router.replace('/(auth)/login')}>Ir para login</Button>
       )}

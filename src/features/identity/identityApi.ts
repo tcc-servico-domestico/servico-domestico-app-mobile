@@ -9,10 +9,16 @@ interface LoginResponse {
 }
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
-  const encoded = token.split('.')[1];
-  if (!encoded) throw new Error('Token de acesso inválido.');
-  const normalized = encoded.replace(/-/g, '+').replace(/_/g, '/');
-  return JSON.parse(globalThis.atob(normalized)) as Record<string, unknown>;
+  const parts = token.split('.');
+  const encoded = parts[1];
+  if (parts.length !== 3 || !encoded || !parts[0] || !parts[2]) throw new Error('Token de acesso inválido.');
+
+  try {
+    const normalized = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(globalThis.atob(normalized)) as Record<string, unknown>;
+  } catch {
+    throw new Error('Token de acesso inválido.');
+  }
 }
 
 function stringArray(value: unknown): readonly string[] {
@@ -24,20 +30,26 @@ export function createIdentityApi(http: OperationsHttpClient, now = () => Date.n
   return {
     async login(input: LoginInput): Promise<OperationsSession> {
       const response = await http.post<LoginResponse>('/Autenticacao/login', input);
+      if (response.tokenType.toLowerCase() !== 'bearer') {
+        throw new Error('A resposta de autenticação é inválida.');
+      }
       const claims = decodeJwtPayload(response.accessToken);
       const roles = stringArray(claims.role).filter(
         (role): role is OperationsRole => role === 'Cliente' || role === 'Profissional',
       );
-      const expiresAt = typeof claims.exp === 'number'
-        ? new Date(claims.exp * 1000).toISOString()
-        : new Date(now() + response.expiresIn * 1000).toISOString();
-      if (new Date(expiresAt).getTime() <= now()) {
+      const subject = typeof claims.sub === 'string' ? claims.sub.trim() : '';
+      const expiration = typeof claims.exp === 'number' ? claims.exp * 1000 : Number.NaN;
+      if (!subject || roles.length === 0 || !Number.isFinite(expiration)) {
+        throw new Error('Token de acesso inválido.');
+      }
+      if (expiration <= now()) {
         throw new Error('A sessão recebida já está expirada. Entre novamente.');
       }
+      const expiresAt = new Date(expiration).toISOString();
 
       return {
         status: 'authenticated',
-        userId: String(claims.sub ?? ''),
+        userId: subject,
         roles,
         accessToken: response.accessToken,
         expiresAt,

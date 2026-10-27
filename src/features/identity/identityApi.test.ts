@@ -45,6 +45,45 @@ describe('identityApi', () => {
       .rejects.toThrow('já está expirada');
   });
 
+  it.each([
+    ['sem assunto', { role: 'Cliente', exp: 1_800_000_000 }],
+    ['sem papel permitido', { sub: 'user-1', role: 'Administrador', exp: 1_800_000_000 }],
+    ['sem expiração', { sub: 'user-1', role: 'Cliente' }],
+  ])('rejects a token %s before creating the session', async (_scenario, payload) => {
+    const http = {
+      post: vi.fn().mockResolvedValue({
+        accessToken: token(payload),
+        tokenType: 'Bearer',
+        expiresIn: 900,
+      }),
+    } as unknown as OperationsHttpClient;
+
+    await expect(createIdentityApi(http).login({ usuario: 'user@example.com', senha: 'secret' }))
+      .rejects.toThrow('Token de acesso inválido');
+  });
+
+  it('rejects a response that is not a Bearer token', async () => {
+    const http = {
+      post: vi.fn().mockResolvedValue({
+        accessToken: token({ sub: 'user-1', role: 'Cliente', exp: 1_800_000_000 }),
+        tokenType: 'Basic',
+        expiresIn: 900,
+      }),
+    } as unknown as OperationsHttpClient;
+
+    await expect(createIdentityApi(http).login({ usuario: 'user@example.com', senha: 'secret' }))
+      .rejects.toThrow('resposta de autenticação é inválida');
+  });
+
+  it('rejects a malformed access token', async () => {
+    const http = {
+      post: vi.fn().mockResolvedValue({ accessToken: 'not-a-jwt', tokenType: 'Bearer', expiresIn: 900 }),
+    } as unknown as OperationsHttpClient;
+
+    await expect(createIdentityApi(http).login({ usuario: 'user@example.com', senha: 'secret' }))
+      .rejects.toThrow('Token de acesso inválido');
+  });
+
   it('executes the identity journey against a mock without putting the confirmation token in the request body', async () => {
     const post = vi.fn()
       .mockResolvedValueOnce(undefined)

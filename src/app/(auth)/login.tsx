@@ -73,7 +73,13 @@ export default function LoginScreen() {
       />
 
       <View style={styles.row}> 
-        <View style={styles.checkboxContainer}>
+          <TouchableOpacity
+            style={styles.checkboxContainer}
+            onPress={() => setManterConectado(!manterConectado)}
+            accessibilityRole="checkbox"
+            accessibilityLabel="Continuar conectado"
+            accessibilityState={{ checked: manterConectado }}
+          >
           <View style={styles.checkbox}>
             <Checkbox
                 status={manterConectado ? 'checked' : 'unchecked'}
@@ -81,9 +87,9 @@ export default function LoginScreen() {
             />
           </View>
           <Text>Continuar conectado</Text>
-        </View>
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleEsqueciSenha}>
+        <TouchableOpacity onPress={handleEsqueciSenha} accessibilityRole="button" accessibilityLabel="Esqueci a senha">
           <Text style={styles.linkText}>Esqueci a senha</Text>
         </TouchableOpacity>
       </View>
@@ -100,11 +106,12 @@ export default function LoginScreen() {
         loading={submitting}
         disabled={submitting || !email.trim() || !senha}
         accessibilityLabel="Entrar"
+        accessibilityState={{ disabled: submitting || !email.trim() || !senha, busy: submitting }}
       >
         Entrar
       </Button>
 
-      <TouchableOpacity onPress={handleCadastro}>
+      <TouchableOpacity onPress={handleCadastro} accessibilityRole="button" accessibilityLabel="Criar uma conta">
         <Text style={styles.cadastroText}>Não tenho conta</Text>
       </TouchableOpacity>
     </View>

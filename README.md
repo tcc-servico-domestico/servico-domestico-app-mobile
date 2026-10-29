@@ -26,6 +26,10 @@ rota interna de criação de cobrança: ela é exclusiva do Core. O copia-e-cola
 fake é armazenado em `SecureStore`, delimitado ao usuário autenticado, e é
 apagado no logout, expiração ou encerramento financeiro.
 
+`EXPO_PUBLIC_AUTH_API_BASE_URL` aponta à Autenticação. Cadastro, confirmação e
+login usam um cliente separado; operações de imóveis/serviços usam a URL do Core.
+As variáveis públicas são acessadas estaticamente para serem incluídas pelo Expo.
+
 ## Contratos de integração
 
 Os contratos REST e de eventos estáveis `v1` são mantidos no repositório de documentação, em `../../servico-domestico-docs/contratos/v1` neste workspace. Eles são a fonte de referência para as interfaces em `src/features/operations/contracts/`; o diretório `v0` permanece apenas como baseline histórico.
@@ -40,7 +44,10 @@ npx tsc --noEmit
 
 ## Homologação
 
-Copie `.env.homologacao.example` para `.env.local` antes de iniciar o Expo para
-testar identidade no ambiente remoto. Essa configuração contém somente URLs
-públicas HTTPS e nenhum segredo. Fora de `development`, o app rejeita URL HTTP
-ou `localhost` como API base.
+Copie `.env.homologacao.example` para `.env.local` e substitua os três hosts
+`example.invalid` pelas URLs HTTPS verificadas da homologação isolada. Os hosts
+de produção descritos na infraestrutura não constituem um ambiente de reset e
+falhas controladas. A configuração contém somente URLs públicas, sem segredos.
+Fora de `development`, o app rejeita URL HTTP ou `localhost` como API base.
+Reinicie o Expo com `npx expo start --clear` após mudar as URLs; gere um novo
+build/export para distribuir a configuração atualizada.

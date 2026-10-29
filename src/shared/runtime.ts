@@ -28,5 +28,6 @@ export const paymentHttpClient = createFetchHttpClient({
   },
 });
 
-export const identityApi = createIdentityApi(httpClient);
+export const identityHttpClient = createFetchHttpClient({ baseUrl: environment.authApiBaseUrl });
+export const identityApi = createIdentityApi(identityHttpClient);
 export { environment };

@@ -51,3 +51,20 @@ falhas controladas. A configuração contém somente URLs públicas, sem segredo
 Fora de `development`, o app rejeita URL HTTP ou `localhost` como API base.
 Reinicie o Expo com `npx expo start --clear` após mudar as URLs; gere um novo
 build/export para distribuir a configuração atualizada.
+
+### Configuração pública D2-27
+
+`config/homologacao.d2-27.env` contém os hosts planejados da homologação isolada nas VMs atuais. O ambiente só pode ser entregue após o workflow de infraestrutura aprovar HTTPS e qualificação; gerar um bundle não comprova essa prontidão.
+
+No PowerShell, carregue essa configuração explicitamente antes de iniciar o Expo:
+
+```powershell
+Get-Content config/homologacao.d2-27.env | ForEach-Object {
+  $entry = $_ -split '=', 2
+  [Environment]::SetEnvironmentVariable($entry[0], $entry[1], 'Process')
+}
+$env:EXPO_NO_DOTENV = '1'
+npx expo start --clear
+```
+
+Para exportar o bundle Android com a mesma configuração, use `npx expo export --platform android --output-dir dist-homologacao`. O export Hermes contém JavaScript e assets; não é um APK instalável. Senhas das contas de teste e tokens não devem ser acrescentados ao arquivo público nem ao bundle.

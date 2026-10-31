@@ -18,6 +18,16 @@ export const httpClient = createFetchHttpClient({
   },
 });
 
+const identityHttpClient = createFetchHttpClient({
+  baseUrl: environment.authApiBaseUrl,
+  getAccessToken: async () => (await sessionStore.load())?.accessToken ?? null,
+  onUnauthorized: async () => {
+    const session = await sessionStore.load();
+    if (session) await paymentTrackingStore.clear(session.userId);
+    await sessionStore.clear();
+  },
+});
+
 export const paymentHttpClient = createFetchHttpClient({
   baseUrl: environment.paymentApiBaseUrl,
   getAccessToken: async () => (await sessionStore.load())?.accessToken ?? null,
@@ -28,5 +38,5 @@ export const paymentHttpClient = createFetchHttpClient({
   },
 });
 
-export const identityApi = createIdentityApi(httpClient);
+export const identityApi = createIdentityApi(identityHttpClient);
 export { environment };

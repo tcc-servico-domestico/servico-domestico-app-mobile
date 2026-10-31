@@ -1,11 +1,8 @@
 import { ActivityIndicator, View } from 'react-native';
 
 import { ImoveisScreen } from '@/src/features/operations/imoveis/ImoveisScreen';
-import { createImoveisApi } from '@/src/features/operations/imoveis/api';
 import { useAuth } from '@/src/context/AuthContext';
-import { httpClient } from '@/src/shared/runtime';
-
-const imoveisApi = createImoveisApi(httpClient);
+import { imoveisApi } from '@/src/shared/runtime';
 
 export default function ImoveisRoute() {
   const { session, status } = useAuth();

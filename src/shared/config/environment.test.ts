@@ -12,6 +12,7 @@ describe('readEnvironment', () => {
       EXPO_PUBLIC_MOBILE_CONFIRMATION_BASE_URL: 'servicodomestico://confirmar-email',
     })).toEqual({
       deployment: 'homologacao',
+      demoMode: false,
       authApiBaseUrl: 'https://auth.example.test',
       apiBaseUrl: 'https://api.example.test',
       paymentApiBaseUrl: 'https://payment.example.test',
@@ -63,4 +64,17 @@ describe('readEnvironment', () => {
       })).toThrow('HTTPS público');
     },
   );
+
+  it('allows demo only in development', () => {
+    expect(readEnvironment({
+      EXPO_PUBLIC_APP_ENV: 'development', EXPO_PUBLIC_DEMO_MODE: 'true',
+      EXPO_PUBLIC_API_BASE_URL: 'https://demo.invalid', EXPO_PUBLIC_AUTH_API_BASE_URL: 'https://demo.invalid',
+      EXPO_PUBLIC_PAYMENT_API_BASE_URL: 'https://demo.invalid', EXPO_PUBLIC_MOBILE_CONFIRMATION_BASE_URL: 'servicodomestico://confirmar-email',
+    }).demoMode).toBe(true);
+    expect(() => readEnvironment({
+      EXPO_PUBLIC_APP_ENV: 'homologacao', EXPO_PUBLIC_DEMO_MODE: 'true',
+      EXPO_PUBLIC_API_BASE_URL: 'https://api.example.test', EXPO_PUBLIC_AUTH_API_BASE_URL: 'https://auth.example.test',
+      EXPO_PUBLIC_PAYMENT_API_BASE_URL: 'https://payment.example.test', EXPO_PUBLIC_MOBILE_CONFIRMATION_BASE_URL: 'servicodomestico://confirmar-email',
+    })).toThrow('só pode ser usado em desenvolvimento');
+  });
 });

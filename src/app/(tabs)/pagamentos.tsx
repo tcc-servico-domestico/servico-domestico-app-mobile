@@ -2,11 +2,8 @@ import { ActivityIndicator, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import { PagamentosScreen } from '@/src/features/operations/pagamentos/PagamentosScreen';
-import { createPagamentosApi } from '@/src/features/operations/pagamentos/api';
 import { useAuth } from '@/src/context/AuthContext';
-import { paymentHttpClient } from '@/src/shared/runtime';
-
-const pagamentosApi = createPagamentosApi(paymentHttpClient);
+import { pagamentosApi } from '@/src/shared/runtime';
 
 export default function PagamentosRoute() {
   const { session, status } = useAuth();

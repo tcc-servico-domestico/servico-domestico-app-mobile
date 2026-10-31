@@ -1,5 +1,6 @@
 export interface AppEnvironment {
   readonly deployment: 'development' | 'homologacao' | 'production';
+  readonly demoMode: boolean;
   readonly apiBaseUrl: string;
   readonly authApiBaseUrl: string;
   readonly paymentApiBaseUrl: string;
@@ -25,6 +26,13 @@ function readDeployment(value: string | undefined): AppEnvironment['deployment']
   throw new Error('EXPO_PUBLIC_APP_ENV deve ser development, homologacao ou production.');
 }
 
+function readDemoMode(value: string | undefined, deployment: AppEnvironment['deployment']): boolean {
+  if (!value || value === 'false') return false;
+  if (value !== 'true') throw new Error('EXPO_PUBLIC_DEMO_MODE deve ser true ou false.');
+  if (deployment !== 'development') throw new Error('EXPO_PUBLIC_DEMO_MODE só pode ser usado em desenvolvimento.');
+  return true;
+}
+
 function publicApiUrl(
   source: Readonly<Record<string, string | undefined>>,
   name: 'EXPO_PUBLIC_API_BASE_URL' | 'EXPO_PUBLIC_AUTH_API_BASE_URL' | 'EXPO_PUBLIC_PAYMENT_API_BASE_URL',
@@ -48,11 +56,13 @@ export function readEnvironment(
     EXPO_PUBLIC_AUTH_API_BASE_URL: process.env.EXPO_PUBLIC_AUTH_API_BASE_URL,
     EXPO_PUBLIC_PAYMENT_API_BASE_URL: process.env.EXPO_PUBLIC_PAYMENT_API_BASE_URL,
     EXPO_PUBLIC_MOBILE_CONFIRMATION_BASE_URL: process.env.EXPO_PUBLIC_MOBILE_CONFIRMATION_BASE_URL,
+    EXPO_PUBLIC_DEMO_MODE: process.env.EXPO_PUBLIC_DEMO_MODE,
   },
 ): AppEnvironment {
   const deployment = readDeployment(source.EXPO_PUBLIC_APP_ENV);
   return {
     deployment,
+    demoMode: readDemoMode(source.EXPO_PUBLIC_DEMO_MODE, deployment),
     apiBaseUrl: publicApiUrl(source, 'EXPO_PUBLIC_API_BASE_URL', deployment),
     authApiBaseUrl: publicApiUrl(source, 'EXPO_PUBLIC_AUTH_API_BASE_URL', deployment),
     paymentApiBaseUrl: publicApiUrl(source, 'EXPO_PUBLIC_PAYMENT_API_BASE_URL', deployment),

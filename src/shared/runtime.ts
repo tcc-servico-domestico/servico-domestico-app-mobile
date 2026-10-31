@@ -3,12 +3,19 @@ import { readEnvironment } from '@/src/shared/config/environment';
 import { createFetchHttpClient } from '@/src/shared/http/fetchHttpClient';
 import { secureSessionStore } from '@/src/shared/session/secureSessionStore';
 import { paymentTrackingStore } from '@/src/features/operations/pagamentos/paymentTrackingStore';
+import { createImoveisApi } from '@/src/features/operations/imoveis/api';
+import { createOfertasApi } from '@/src/features/operations/ofertas/api';
+import { createPagamentosApi } from '@/src/features/operations/pagamentos/api';
+import { createServicosApi } from '@/src/features/operations/servicos/api';
+import { createOfflineDemoHttpGuard, createOfflineDemoRuntime } from '@/src/features/demo/offlineDemo';
 
 const environment = readEnvironment();
+const offlineDemo = environment.demoMode ? createOfflineDemoRuntime() : null;
+const demoHttpGuard = offlineDemo ? createOfflineDemoHttpGuard() : null;
 
-export const sessionStore = secureSessionStore;
+export const sessionStore = offlineDemo?.sessionStore ?? secureSessionStore;
 
-export const httpClient = createFetchHttpClient({
+export const httpClient = demoHttpGuard ?? createFetchHttpClient({
   baseUrl: environment.apiBaseUrl,
   getAccessToken: async () => (await sessionStore.load())?.accessToken ?? null,
   onUnauthorized: async () => {
@@ -18,7 +25,7 @@ export const httpClient = createFetchHttpClient({
   },
 });
 
-const identityHttpClient = createFetchHttpClient({
+const identityHttpClient = demoHttpGuard ?? createFetchHttpClient({
   baseUrl: environment.authApiBaseUrl,
   getAccessToken: async () => (await sessionStore.load())?.accessToken ?? null,
   onUnauthorized: async () => {
@@ -28,7 +35,7 @@ const identityHttpClient = createFetchHttpClient({
   },
 });
 
-export const paymentHttpClient = createFetchHttpClient({
+export const paymentHttpClient = demoHttpGuard ?? createFetchHttpClient({
   baseUrl: environment.paymentApiBaseUrl,
   getAccessToken: async () => (await sessionStore.load())?.accessToken ?? null,
   onUnauthorized: async () => {
@@ -38,5 +45,9 @@ export const paymentHttpClient = createFetchHttpClient({
   },
 });
 
-export const identityApi = createIdentityApi(identityHttpClient);
+export const identityApi = offlineDemo?.identityApi ?? createIdentityApi(identityHttpClient);
+export const imoveisApi = offlineDemo?.imoveisApi ?? createImoveisApi(httpClient);
+export const servicosApi = offlineDemo?.servicosApi ?? createServicosApi(httpClient);
+export const ofertasApi = offlineDemo?.ofertasApi ?? createOfertasApi(httpClient);
+export const pagamentosApi = offlineDemo?.pagamentosApi ?? createPagamentosApi(paymentHttpClient);
 export { environment };

@@ -42,6 +42,14 @@ npm run lint
 npx tsc --noEmit
 ```
 
+### Demonstração offline
+
+Copie `.env.demo.example` para `.env.local` para executar o roteiro técnico
+offline. Esse modo só é aceito em `development`, usa adaptadores em memória,
+bloqueia chamadas HTTP e mostra a faixa `MOCK — NÃO CONECTADO À HOMOLOGAÇÃO`.
+Ele não valida API, HML, pagamento ou E2E e não deve ser usado em exportações de
+homologação ou produção.
+
 ## Homologação
 
 Copie `.env.homologacao.example` para `.env.local` e substitua os três hosts

@@ -1,5 +1,6 @@
 export interface AppEnvironment {
   readonly deployment: 'development' | 'homologacao' | 'production';
+  readonly authApiBaseUrl: string;
   readonly apiBaseUrl: string;
   readonly paymentApiBaseUrl: string;
   readonly mobileConfirmationBaseUrl: string;
@@ -26,7 +27,7 @@ function readDeployment(value: string | undefined): AppEnvironment['deployment']
 
 function publicApiUrl(
   source: Readonly<Record<string, string | undefined>>,
-  name: 'EXPO_PUBLIC_API_BASE_URL' | 'EXPO_PUBLIC_PAYMENT_API_BASE_URL',
+  name: 'EXPO_PUBLIC_AUTH_API_BASE_URL' | 'EXPO_PUBLIC_API_BASE_URL' | 'EXPO_PUBLIC_PAYMENT_API_BASE_URL',
   deployment: AppEnvironment['deployment'],
 ): string {
   const url = requiredUrl(source[name], name, ['http:', 'https:']);
@@ -42,6 +43,7 @@ export function readEnvironment(
   const deployment = readDeployment(source.EXPO_PUBLIC_APP_ENV);
   return {
     deployment,
+    authApiBaseUrl: publicApiUrl(source, 'EXPO_PUBLIC_AUTH_API_BASE_URL', deployment),
     apiBaseUrl: publicApiUrl(source, 'EXPO_PUBLIC_API_BASE_URL', deployment),
     paymentApiBaseUrl: publicApiUrl(source, 'EXPO_PUBLIC_PAYMENT_API_BASE_URL', deployment),
     mobileConfirmationBaseUrl: requiredUrl(

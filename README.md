@@ -20,6 +20,11 @@ REST `v1`.
 
 O módulo de operações recebe `OperationsSession` e `OperationsHttpClient` do shell. Armazenamento de token, renovação de sessão, URL-base, interceptadores e navegação raiz permanecem sob responsabilidade do shell. O único armazenamento protegido do módulo é o estado local, temporário e específico de uma cobrança Pix fake.
 
+As chaves de idempotência usam UUID v4 de fonte criptográfica. O adaptador
+`src/features/operations/idempotency.native.ts` usa `expo-crypto`, compatível
+com o SDK 55 e incluído no Expo Go; não depende de Web Crypto global no
+Hermes/Android. A implementação web usa Web Crypto do navegador.
+
 `EXPO_PUBLIC_API_BASE_URL` aponta ao Core e
 `EXPO_PUBLIC_PAYMENT_API_BASE_URL` aponta ao Pagamento. O app nunca chama a
 rota interna de criação de cobrança: ela é exclusiva do Core. O copia-e-cola

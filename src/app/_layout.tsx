@@ -3,14 +3,26 @@ import { AuthProvider, useAuth } from '../context/AuthContext';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { environment } from '@/src/shared/runtime';
+import { MD3LightTheme, PaperProvider } from 'react-native-paper';
+
+const theme = {
+  ...MD3LightTheme,
+  colors: {
+    ...MD3LightTheme.colors,
+    primary: '#175E55', onPrimary: '#FFFFFF', background: '#FAFAF7',
+    surface: '#FFFFFF', onSurface: '#1B2421', error: '#A3262E', outline: '#6B7A74',
+  },
+};
 
 void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootNavigation />
-    </AuthProvider>
+    <PaperProvider theme={theme}>
+      <AuthProvider>
+        <RootNavigation />
+      </AuthProvider>
+    </PaperProvider>
   );
 }
 

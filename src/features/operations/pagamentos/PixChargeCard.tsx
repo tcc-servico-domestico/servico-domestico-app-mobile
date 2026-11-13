@@ -28,17 +28,22 @@ export function PixChargeCard({ pagamento, tracked }: Props) {
 
   const copy = async () => {
     if (!pixCode) return;
-    await Clipboard.setStringAsync(pixCode);
-    setCopyMessage('Código Pix copiado.');
+    try {
+      await Clipboard.setStringAsync(pixCode);
+      setCopyMessage('Código Pix copiado.');
+    } catch {
+      setCopyMessage('Não foi possível copiar o código. Tente novamente.');
+    }
   };
 
   return <View style={styles.card} accessibilityLabel="Pagamento Pix simulado">
-    <Text style={styles.title}>Pagamento Pix simulado</Text>
+    <Text accessibilityRole="header" style={styles.title}>Pagamento Pix simulado</Text>
     <Text accessibilityRole="alert" style={styles.notice}>Não realiza transação financeira real.</Text>
     <Text>{paymentStatusLabel(pagamento)}</Text>
     <Text>Valor: {money(pagamento.valor)}</Text>
     {tracked ? <Text>Expira em {formatDate(tracked.expiraEm)}</Text> : null}
-    {expired ? <Text accessibilityRole="alert" style={styles.expired}>Código Pix expirado.</Text> : null}
+    {pagamento.status === 'Pendente' && expired ? <Text accessibilityRole="alert" style={styles.expired}>Código Pix expirado. Atualize o pagamento para consultar a situação.</Text> : null}
+    {pagamento.status === 'Pendente' && !expired && !pixCode ? <Text>Código Pix indisponível neste dispositivo. Atualize o pagamento para consultar a situação.</Text> : null}
     {canShowPix ? <>
       <View accessibilityLabel="Código QR para o Pix simulado" style={styles.qr}>
         <QRCode value={pixCode!} size={180} />
@@ -51,9 +56,9 @@ export function PixChargeCard({ pagamento, tracked }: Props) {
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: 1, borderColor: '#1769aa', backgroundColor: '#eef7ff', borderRadius: 8, padding: 12, gap: 8 },
+  card: { borderWidth: 1, borderColor: '#175E55', backgroundColor: '#E3F2EC', borderRadius: 8, padding: 12, gap: 8 },
   title: { fontSize: 18, fontWeight: '700' },
-  notice: { color: '#5c3c00' },
-  expired: { color: '#a00', fontWeight: '600' },
+  notice: { color: '#805600' },
+  expired: { color: '#A3262E', fontWeight: '600' },
   qr: { alignItems: 'center', backgroundColor: '#fff', padding: 12, alignSelf: 'flex-start' },
 });

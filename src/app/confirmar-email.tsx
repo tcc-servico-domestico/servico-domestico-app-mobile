@@ -17,7 +17,7 @@ export default function ConfirmEmailScreen() {
     const value = Array.isArray(token) ? token[0] : token;
     if (!value) {
       setState('error');
-      setMessage('O link de confirmação é inválido.');
+      setMessage('O link de confirmação está incompleto. Abra o link recebido por e-mail novamente.');
       return;
     }
 
@@ -29,7 +29,7 @@ export default function ConfirmEmailScreen() {
     }).catch((cause) => {
       if (!active) return;
       setState('error');
-      setMessage(cause instanceof HttpProblemError ? cause.message : 'Não foi possível confirmar o e-mail.');
+      setMessage(cause instanceof HttpProblemError ? cause.message : 'Não foi possível confirmar o e-mail. Verifique o link recebido e tente novamente.');
     });
     return () => { active = false; };
   }, [confirmEmail, token]);

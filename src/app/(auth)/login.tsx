@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, ScrollView, Alert } from 'react-native';
 import { TextInput, Button, Checkbox, HelperText } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/context/AuthContext';
 import { HttpProblemError } from '@/src/shared/contracts/http';
+import { identityFieldErrors, loginErrorMessage, validateIdentityForm, type IdentityFieldErrors } from '@/src/features/identity/formValidation';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -14,39 +15,47 @@ export default function LoginScreen() {
   const [manterConectado, setManterConectado] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<IdentityFieldErrors>({});
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [senhaTouched, setSenhaTouched] = useState(false);
+  const validation = validateIdentityForm(email, senha, 'login', { email: emailTouched, password: senhaTouched });
+  const emailError = validation.emailError ?? fieldErrors.email;
+  const senhaError = validation.passwordError ?? fieldErrors.password;
 
   const handleLogin = async () => {
     if (submitting) return;
     setSubmitting(true);
     setError(null);
+    setFieldErrors({});
     try {
       await login({ usuario: email.trim(), senha }, manterConectado);
       router.replace('/(tabs)/home');
     } catch (cause) {
-      setError(cause instanceof HttpProblemError ? cause.message : 'Não foi possível entrar. Tente novamente.');
+      if (cause instanceof HttpProblemError) setFieldErrors(identityFieldErrors(cause.problem.errors));
+      setError(cause instanceof HttpProblemError ? loginErrorMessage(cause.problem.status, cause.message) : loginErrorMessage());
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleEsqueciSenha = () => {
-    console.log('Redirecionar para recuperação de senha');
-    // router.push('/recuperar-senha'); // Se tiver uma tela de recuperação
+    Alert.alert('Recuperação de senha indisponível', 'Esta opção ainda não está disponível no aplicativo.');
   };
 
   const handleCadastro = () => {
-    console.log('Redirecionar para cadastro');
     router.push('/(auth)/cadastro');
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Faça seu login</Text>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <Text accessibilityRole="header" style={styles.title}>Faça seu login</Text>
+      <Text>Informe seu e-mail e senha para acessar sua conta. Todos os campos são obrigatórios.</Text>
 
       <TextInput
-        label="Email"
+        label="E-mail *"
         value={email}
-        onChangeText={setEmail}
+        onChangeText={(value) => { setEmail(value); setFieldErrors((current) => ({ ...current, email: undefined })); setError(null); }}
+        onBlur={() => setEmailTouched(true)}
         style={styles.input}
         mode="flat"
         underlineColor="transparent"
@@ -56,12 +65,16 @@ export default function LoginScreen() {
         autoComplete="email"
         keyboardType="email-address"
         accessibilityLabel="E-mail"
+        accessibilityHint={emailError ?? 'Campo obrigatório.'}
+        error={Boolean(emailError)}
       />
+      {emailError ? <HelperText type="error" accessibilityLiveRegion="polite">{emailError}</HelperText> : null}
 
       <TextInput
-        label="Senha"
+        label="Senha *"
         value={senha}
-        onChangeText={setSenha}
+        onChangeText={(value) => { setSenha(value); setFieldErrors((current) => ({ ...current, password: undefined })); setError(null); }}
+        onBlur={() => setSenhaTouched(true)}
         style={styles.input}
         mode="flat"
         underlineColor="transparent"
@@ -70,7 +83,10 @@ export default function LoginScreen() {
         placeholderTextColor="#ccc"
         autoComplete="current-password"
         accessibilityLabel="Senha"
+        accessibilityHint={senhaError ?? 'Campo obrigatório.'}
+        error={Boolean(senhaError)}
       />
+      {senhaError ? <HelperText type="error" accessibilityLiveRegion="polite">{senhaError}</HelperText> : null}
 
       <View style={styles.row}> 
           <TouchableOpacity
@@ -89,44 +105,44 @@ export default function LoginScreen() {
           <Text>Continuar conectado</Text>
           </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleEsqueciSenha} accessibilityRole="button" accessibilityLabel="Esqueci a senha">
+        <TouchableOpacity style={styles.linkTarget} onPress={handleEsqueciSenha} accessibilityRole="button" accessibilityLabel="Esqueci a senha">
           <Text style={styles.linkText}>Esqueci a senha</Text>
         </TouchableOpacity>
       </View>
 
-      <HelperText type="error" visible={Boolean(error)} accessibilityLiveRegion="polite">
-        {error}
-      </HelperText>
+      {error ? <HelperText type="error" accessibilityLiveRegion="polite">{error}</HelperText> : null}
 
       <Button
         mode="contained"
         onPress={handleLogin}
         style={styles.loginButton}
-        contentStyle={{ height: 50 }}
+        contentStyle={{ minHeight: 50 }}
         loading={submitting}
-        disabled={submitting || !email.trim() || !senha}
+        disabled={submitting || !validation.canSubmit}
         accessibilityLabel="Entrar"
-        accessibilityState={{ disabled: submitting || !email.trim() || !senha, busy: submitting }}
+        accessibilityState={{ disabled: submitting || !validation.canSubmit, busy: submitting }}
       >
         Entrar
       </Button>
 
-      <TouchableOpacity onPress={handleCadastro} accessibilityRole="button" accessibilityLabel="Criar uma conta">
+      <TouchableOpacity style={styles.linkTarget} onPress={handleCadastro} accessibilityRole="button" accessibilityLabel="Criar uma conta">
         <Text style={styles.cadastroText}>Não tenho conta</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
+    paddingBottom: 32,
+    gap: 8,
     backgroundColor: '#fff',
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
   },
@@ -138,7 +154,8 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
     alignItems: 'center',
     marginBottom: 20,
   },
@@ -148,19 +165,21 @@ const styles = StyleSheet.create({
   },
   checkboxContainer: {
     flexDirection: 'row',
-    alignItems: 'center'
+    alignItems: 'center',
+    flexShrink: 1,
+    minHeight: 44,
   },
   linkText: {
-    color: '#f68c1f',
+    color: '#175E55',
     fontSize: 14,
   },
+  linkTarget: { minHeight: 44, justifyContent: 'center' },
   loginButton: {
     borderRadius: 25,
-    backgroundColor: '#f68c1f',
     marginBottom: 20,
   },
   cadastroText: {
-    color: '#f68c1f',
+    color: '#175E55',
     textAlign: 'center',
     fontSize: 14,
   },

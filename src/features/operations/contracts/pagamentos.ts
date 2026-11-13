@@ -3,6 +3,7 @@ import type { OperationsHttpClient } from '@/src/shared/contracts/http';
 
 export type PagamentoStatus = 'Pendente' | 'Confirmado' | 'Falhou' | 'Estornado';
 export type TransacaoPagamentoStatus = PagamentoStatus | 'Liberado';
+export type RecebimentoStatus = 'Pendente' | 'Recebido' | 'Desconhecido';
 export type CustodiaStatus = 'NaoIniciada' | 'Retida' | 'Liberada' | 'Estornada' | 'Falhou';
 
 export interface TransacaoPagamento {
@@ -22,6 +23,7 @@ export interface Pagamento {
   readonly descricao?: string;
   readonly status: PagamentoStatus;
   readonly custodiaStatus: CustodiaStatus;
+  readonly recebimentoStatus?: RecebimentoStatus;
   readonly requestedAt: string;
   readonly paidAt: string | null;
   readonly createdAt: string;

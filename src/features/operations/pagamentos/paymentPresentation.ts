@@ -28,5 +28,12 @@ export function paymentStatusLabel(pagamento: Pagamento): string {
   if (pagamento.status === 'Falhou') return 'Pagamento recusado';
   if (pagamento.status === 'Estornado') return 'Pagamento estornado';
   if (pagamento.custodiaStatus === 'Liberada') return 'Valor liberado ao profissional';
-  return 'Pagamento confirmado; valor em custódia';
+  if (pagamento.recebimentoStatus === 'Pendente') return 'Pagamento confirmado; recebimento pendente';
+  if (pagamento.recebimentoStatus === 'Recebido') return 'Pagamento confirmado; valor recebido';
+  if (pagamento.recebimentoStatus === 'Desconhecido') return 'Pagamento confirmado; recebimento não informado';
+  if (pagamento.custodiaStatus === 'Retida') return 'Pagamento confirmado; valor em custódia';
+  if (pagamento.custodiaStatus === 'NaoIniciada') return 'Pagamento confirmado; situação da custódia: não iniciada';
+  if (pagamento.custodiaStatus === 'Falhou') return 'Pagamento confirmado; falha na custódia';
+  if (pagamento.custodiaStatus === 'Estornada') return 'Pagamento confirmado; custódia estornada';
+  return 'Pagamento confirmado; situação da custódia desconhecida';
 }

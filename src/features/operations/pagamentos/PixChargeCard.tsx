@@ -45,11 +45,11 @@ export function PixChargeCard({ pagamento, tracked }: Props) {
     {pagamento.status === 'Pendente' && expired ? <Text accessibilityRole="alert" style={styles.expired}>Código Pix expirado. Atualize o pagamento para consultar a situação.</Text> : null}
     {pagamento.status === 'Pendente' && !expired && !pixCode ? <Text>Código Pix indisponível neste dispositivo. Atualize o pagamento para consultar a situação.</Text> : null}
     {canShowPix ? <>
-      <View accessibilityLabel="Código QR para o Pix simulado" style={styles.qr}>
+      <View accessible accessibilityRole="image" accessibilityLabel="Código QR para o Pix simulado" style={styles.qr}>
         <QRCode value={pixCode!} size={180} />
       </View>
       <Text selectable accessibilityLabel="Código Pix copia e cola">{pixCode}</Text>
-      <Button title="Copiar código Pix" onPress={() => void copy()} />
+      <Button title="Copiar código Pix" color="#175E55" onPress={() => void copy()} />
     </> : null}
     {copyMessage ? <Text accessibilityLiveRegion="polite">{copyMessage}</Text> : null}
   </View>;

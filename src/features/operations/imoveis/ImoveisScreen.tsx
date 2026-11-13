@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator, Button, FlatList, Modal, Pressable, RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, View, useWindowDimensions,
@@ -59,6 +59,7 @@ export function ImoveisScreen({ api, session }: Props) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [mutating, setMutating] = useState(false);
+  const deactivationInFlight = useRef(false);
   const [confirmingDeactivation, setConfirmingDeactivation] = useState<Imovel | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionUncertain, setActionUncertain] = useState(false);
@@ -126,6 +127,8 @@ export function ImoveisScreen({ api, session }: Props) {
   }, [api]);
 
   const deactivate = useCallback(async (imovel: Imovel) => {
+    if (deactivationInFlight.current) return;
+    deactivationInFlight.current = true;
     setMutating(true);
     setActionError(null);
     try {
@@ -142,6 +145,7 @@ export function ImoveisScreen({ api, session }: Props) {
         setActionError(`${friendlyError(error)} O resultado da inativação não foi confirmado. Atualize o imóvel antes de tentar novamente.`);
       }
     } finally {
+      deactivationInFlight.current = false;
       setMutating(false);
       setConfirmingDeactivation(null);
     }
@@ -196,7 +200,7 @@ export function ImoveisScreen({ api, session }: Props) {
         onEndReached={loadMore}
         onEndReachedThreshold={0.3}
         ListHeaderComponent={<View style={styles.listHeader}>
-          <View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>Meus imóveis</Text><Button title="Adicionar" accessibilityLabel="Cadastrar imóvel" onPress={() => setScreen({ name: 'form' })} /></View>
+          <View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>Meus imóveis</Text><Button color="#175E55" title="Adicionar" accessibilityLabel="Cadastrar imóvel" onPress={() => setScreen({ name: 'form' })} /></View>
           <Text>Selecione um imóvel para consultar seus dados ou use Adicionar para cadastrar outro.</Text>
           {message ? <ErrorPanel message={message} onRetry={refresh} /> : null}
           {loading && items.length === 0 ? <View style={styles.center}><ActivityIndicator accessibilityLabel="Carregando imóveis" /></View> : null}
@@ -223,8 +227,8 @@ function DeactivationConfirmation({ visible, pending, onCancel, onConfirm }: {
         <Text accessibilityRole="header" style={styles.modalTitle}>Inativar imóvel?</Text>
         <Text>Imóveis com serviço ativo não podem ser inativados.</Text>
         <View style={styles.actions}>
-          <Button title="Cancelar" onPress={onCancel} disabled={pending} />
-          <Button title={pending ? 'Inativando…' : 'Confirmar inativação'} color="#a00" onPress={onConfirm} disabled={pending} />
+          <Button color="#175E55" title="Cancelar" onPress={onCancel} disabled={pending} />
+          <Button title={pending ? 'Inativando…' : 'Confirmar inativação'} color="#A3262E" onPress={onConfirm} disabled={pending} />
         </View>
       </ScrollView>
     </View>
@@ -232,7 +236,7 @@ function DeactivationConfirmation({ visible, pending, onCancel, onConfirm }: {
 }
 
 function ErrorPanel({ message, onRetry }: { readonly message: string; readonly onRetry: () => void }) {
-  return <View style={styles.error}><Text accessibilityRole="alert">{message}</Text><Button title="Tentar novamente" onPress={onRetry} /></View>;
+  return <View style={styles.error}><Text accessibilityRole="alert">{message}</Text><Button color="#175E55" title="Tentar novamente" onPress={onRetry} /></View>;
 }
 
 function ImovelDetail({ imovel, pending, error, actionUncertain, onBack, onEdit, onDeactivate, onReload }: {
@@ -241,14 +245,14 @@ function ImovelDetail({ imovel, pending, error, actionUncertain, onBack, onEdit,
 }) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Button title="Voltar" onPress={onBack} />
+      <Button color="#175E55" title="Voltar" onPress={onBack} />
       <Text accessibilityRole="header" style={styles.title}>{imovel.descricao ?? 'Imóvel sem descrição'}</Text>
       <Text>{summary(imovel)}</Text>
       <Text>CEP: {imovel.endereco.cep}</Text><Text>Coordenadas: {imovel.latitude}, {imovel.longitude}</Text>
       <Text>Metragem: {imovel.metragemQuadrada ?? 'não informada'} m²</Text><Text>Situação: {imovel.status}</Text>
       {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
-      {actionUncertain ? <Button title="Atualizar imóvel" onPress={onReload} disabled={pending} /> : null}
-      <View style={styles.actions}><Button title="Editar" onPress={onEdit} disabled={pending || actionUncertain} /><Button title="Inativar" color="#a00" onPress={onDeactivate} disabled={pending || actionUncertain} /></View>
+      {actionUncertain ? <Button color="#175E55" title="Atualizar imóvel" onPress={onReload} disabled={pending} /> : null}
+      <View style={styles.actions}><Button color="#175E55" title="Editar" onPress={onEdit} disabled={pending || actionUncertain} /><Button title="Inativar" color="#A3262E" onPress={onDeactivate} disabled={pending || actionUncertain} /></View>
     </ScrollView>
   );
 }
@@ -265,6 +269,7 @@ function ImovelForm({ imovel, pending, attempt, setAttempt, creationDraft, setCr
   const [errors, setErrors] = useState<ImovelFormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [editUncertain, setEditUncertain] = useState(false);
+  const submitting = useRef(false);
 
   const setValue = (field: keyof ImovelFormValues, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
@@ -273,7 +278,7 @@ function ImovelForm({ imovel, pending, attempt, setAttempt, creationDraft, setCr
   };
 
   const submit = async () => {
-    if (editUncertain) return;
+    if (editUncertain || submitting.current) return;
     const validation = validateImovel(values);
     setErrors(validation);
     if (Object.keys(validation).length > 0) return;
@@ -285,6 +290,7 @@ function ImovelForm({ imovel, pending, attempt, setAttempt, creationDraft, setCr
       return;
     }
     if (!imovel) setAttempt(nextAttempt);
+    submitting.current = true;
     try {
       await onSave(input, nextAttempt.key);
       if (!imovel) { setAttempt(null); setCreationDraft(emptyImovelForm); }
@@ -302,12 +308,14 @@ function ImovelForm({ imovel, pending, attempt, setAttempt, creationDraft, setCr
           ? friendlyError(error)
           : imovel ? `${friendlyError(error)} O resultado não foi confirmado. Volte e atualize o imóvel antes de editar novamente; os dados digitados serão preservados nesta tela.`
           : `${friendlyError(error)} O resultado não foi confirmado. Atualize a lista de imóveis antes de iniciar outra operação; para repetir esta tentativa, mantenha os mesmos dados.`);
+    } finally {
+      submitting.current = false;
     }
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Button title="Voltar" onPress={() => { if (imovel) setEditDraft(values); else setCreationDraft(values); onBack(); }} disabled={pending} />
+      <Button color="#175E55" title="Voltar" onPress={() => { if (imovel) setEditDraft(values); else setCreationDraft(values); onBack(); }} disabled={pending} />
       <Text accessibilityRole="header" style={styles.title}>{imovel ? 'Editar imóvel' : 'Cadastrar imóvel'}</Text>
       <Text>Campos marcados com * são obrigatórios. Confira os dados antes de salvar.</Text>
       {imovel && editDraft ? <Text accessibilityRole="alert">Seu rascunho anterior foi recuperado. Compare os dados com o imóvel atualizado antes de salvar.</Text> : null}
@@ -324,7 +332,7 @@ function ImovelForm({ imovel, pending, attempt, setAttempt, creationDraft, setCr
       <Field label="Cidade" value={values.cidade} onChangeText={(value) => setValue('cidade', value)} error={errors.cidade} required />
       <Field label="UF" value={values.uf} autoCapitalize="characters" maxLength={2} onChangeText={(value) => setValue('uf', value)} error={errors.uf} required />
       <Field label="CEP" value={values.cep} keyboardType="number-pad" onChangeText={(value) => setValue('cep', value)} error={errors.cep} required />
-      <Button title={pending ? 'Salvando…' : 'Salvar'} disabled={pending || editUncertain} onPress={() => void submit()} accessibilityState={{ disabled: pending || editUncertain, busy: pending }} />
+      <Button color="#175E55" title={pending ? 'Salvando…' : 'Salvar'} disabled={pending || editUncertain} onPress={() => void submit()} accessibilityState={{ disabled: pending || editUncertain, busy: pending }} />
     </ScrollView>
   );
 }
@@ -339,7 +347,7 @@ function Field({ label, error, required = false, ...props }: {
 
 const styles = StyleSheet.create({
   list: { flex: 1 }, listHeader: { gap: 12 },
-  container: { flexGrow: 1, padding: 16, gap: 12 }, center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 },
+  container: { flexGrow: 1, padding: 16, gap: 12, backgroundColor: '#FAFAF7' }, center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 },
   heading: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between', alignItems: 'center' }, title: { fontSize: 24, fontWeight: '700', color: '#1B2421' },
   card: { borderWidth: 1, borderColor: '#6B7A74', borderRadius: 8, padding: 12, marginVertical: 6, gap: 4 }, cardTitle: { fontWeight: '700' },
   focused: { borderWidth: 3, borderColor: '#175E55' },

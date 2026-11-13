@@ -116,7 +116,7 @@ export function PagamentosScreen({ api, session, initialPagamentoId, onRouteSele
     {!selected && !message ? <Text accessibilityRole="progressbar">Carregando pagamento…</Text> : null}
     {selected ? <PixChargeCard pagamento={selected} tracked={selectedTracked} /> : null}
     {selected ? <TransactionHistory pagamento={selected} /> : null}
-    <Button title={refreshing ? 'Atualizando…' : 'Atualizar pagamento'} color="#175E55" disabled={refreshing} onPress={refresh} />
+    <Button title={refreshing ? 'Atualizando…' : 'Atualizar pagamento'} color="#175E55" disabled={refreshing} accessibilityState={{ disabled: refreshing, busy: refreshing }} onPress={refresh} />
   </ScrollView>;
 
   return <FlatList style={styles.list} contentContainerStyle={[styles.container, fontScale > 1.3 && { paddingBottom: 96 }]}
@@ -138,7 +138,7 @@ export function PagamentosScreen({ api, session, initialPagamentoId, onRouteSele
 }
 
 function TransactionHistory({ pagamento }: { readonly pagamento: Pagamento }) {
-  return <View style={styles.history}><Text style={styles.subtitle}>Histórico</Text>{[...pagamento.transacoes].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt)).map((item) => <View key={item.id}><Text>{transactionLabel(item)}</Text>{item.motivo ? <Text>{item.motivo}</Text> : null}</View>)}</View>;
+  return <View style={styles.history}><Text accessibilityRole="header" style={styles.subtitle}>Histórico</Text>{pagamento.transacoes.length === 0 ? <Text>Nenhuma movimentação disponível.</Text> : [...pagamento.transacoes].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt)).map((item) => <View key={item.id}><Text>{transactionLabel(item)}</Text>{item.motivo ? <Text>{item.motivo}</Text> : null}</View>)}</View>;
 }
 
 function ErrorPanel({ message, onRetry }: { readonly message: string; readonly onRetry: () => void }) {
@@ -147,9 +147,9 @@ function ErrorPanel({ message, onRetry }: { readonly message: string; readonly o
 
 const styles = StyleSheet.create({
   list: { flex: 1 }, listHeader: { gap: 12 },
-  container: { flexGrow: 1, padding: 16, gap: 12 },
+  container: { flexGrow: 1, padding: 16, gap: 12, backgroundColor: '#FAFAF7' },
   title: { fontSize: 24, fontWeight: '700', color: '#1B2421' }, subtitle: { fontSize: 18, fontWeight: '700', color: '#1B2421' },
-  card: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, gap: 6, marginVertical: 6 }, cardTitle: { fontWeight: '700' },
+  card: { borderWidth: 1, borderColor: '#6B7A74', backgroundColor: '#FFFFFF', borderRadius: 8, padding: 12, gap: 6, marginVertical: 6, minHeight: 44 }, cardTitle: { fontWeight: '700', color: '#1B2421' },
   focused: { borderWidth: 3, borderColor: '#175E55' },
   error: { borderColor: '#A3262E', borderWidth: 1, padding: 8, gap: 8 }, empty: { padding: 16, textAlign: 'center' }, history: { gap: 8 },
 });

@@ -8,6 +8,16 @@ function client() {
 }
 
 describe('createPagamentosApi', () => {
+  it('preserva o estado de recebimento informado na consulta do pagamento', async () => {
+    const http = client();
+    const pagamento = { id: 'payment-1', status: 'Confirmado', recebimentoStatus: 'Pendente' };
+    vi.mocked(http.get).mockResolvedValue(pagamento);
+
+    const resultado = await createPagamentosApi(http).get(pagamento.id);
+
+    expect(resultado.recebimentoStatus).toBe('Pendente');
+    expect(http.get).toHaveBeenCalledWith('/api/v1/pagamentos/payment-1');
+  });
   it('consulta somente os endpoints públicos v1 de pagamentos', async () => {
     const http = client();
     vi.mocked(http.get).mockResolvedValue({ items: [], page: 1, pageSize: 20, total: 0 });

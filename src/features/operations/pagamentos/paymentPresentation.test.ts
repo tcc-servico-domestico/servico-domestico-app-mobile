@@ -45,6 +45,12 @@ describe('apresentação e monitoramento de pagamento', () => {
     expect(paymentStatusLabel({ ...base, status: 'Estornado', custodiaStatus: 'Estornada' })).toBe('Pagamento estornado');
   });
 
+  it('distingue confirmação de recebimento sem presumir custódia', () => {
+    const confirmed = { ...base, status: 'Confirmado' as const, custodiaStatus: 'NaoIniciada' as const };
+    expect(paymentStatusLabel({ ...confirmed, recebimentoStatus: 'Pendente' })).toBe('Pagamento confirmado; recebimento pendente');
+    expect(paymentStatusLabel({ ...confirmed, recebimentoStatus: 'Recebido' })).toBe('Pagamento confirmado; valor recebido');
+    expect(paymentStatusLabel({ ...confirmed, recebimentoStatus: 'Desconhecido' })).toBe('Pagamento confirmado; recebimento não informado');
+  });
   it('não apresenta confirmação ou custódia que não foi informada', () => {
     expect(paymentStatusLabel({ ...base, status: 'Confirmado', custodiaStatus: 'NaoIniciada' })).toBe('Pagamento confirmado; situação da custódia: não iniciada');
     expect(paymentStatusLabel({ ...base, status: 'Confirmado', custodiaStatus: 'Falhou' })).toBe('Pagamento confirmado; falha na custódia');

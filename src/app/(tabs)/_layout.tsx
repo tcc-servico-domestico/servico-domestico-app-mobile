@@ -40,11 +40,13 @@ function AccessibleTabs({ state, descriptors, navigation, canManageProperties }:
 export default function TabsLayout() {
   const { session } = useAuth();
   const { fontScale } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   return (
     <Tabs tabBar={fontScale > 1.3 ? (props) => <AccessibleTabs {...props} canManageProperties={!!session?.roles.includes('Cliente')} /> : undefined} screenOptions={{
       tabBarActiveTintColor: '#175E55',
       tabBarInactiveTintColor: '#465550',
       tabBarButton: (props) => <FocusableTabButton {...props} />,
+      tabBarStyle: { height: 64 + insets.bottom },
     }}>
       <Tabs.Screen
         name="home"

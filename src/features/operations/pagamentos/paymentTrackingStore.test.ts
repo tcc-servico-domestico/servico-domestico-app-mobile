@@ -37,6 +37,46 @@ describe('paymentTrackingStore', () => {
     await expect(paymentTrackingStore.load('user-1')).resolves.toEqual([]);
   });
 
+  it('recupera o acompanhamento vencido sem recuperar o código Pix', async () => {
+    const expired = { ...first, expiraEm: '2000-01-01T00:00:00Z' };
+    nativeStore.values.set('servico-domestico.payment-tracking.v1.user-1', JSON.stringify([expired, first]));
+
+    await expect(paymentTrackingStore.load('user-1')).resolves.toEqual([{ ...expired, pixCopiaECola: null }, first]);
+    expect(JSON.parse(nativeStore.values.get('servico-domestico.payment-tracking.v1.user-1')!))
+      .toEqual([{ ...expired, pixCopiaECola: null }, first]);
+  });
+
+  it('não mantém código com validade inválida ou já expirada ao salvar', async () => {
+    const invalid = { ...first, expiraEm: 'inválida' };
+    await paymentTrackingStore.save('user-1', invalid);
+    await expect(paymentTrackingStore.load('user-1')).resolves.toEqual([{ ...invalid, pixCopiaECola: null }]);
+  });
+
+  it('preserva cobranças quando salvamentos do mesmo usuário ocorrem em paralelo', async () => {
+    await Promise.all([
+      paymentTrackingStore.save('user-1', first),
+      paymentTrackingStore.save('user-1', { ...first, pagamentoId: 'payment-2' }),
+    ]);
+    const payments = await paymentTrackingStore.load('user-1');
+    expect(payments.map((item) => item.pagamentoId).sort()).toEqual(['payment-1', 'payment-2']);
+  });
+
+  it('apaga armazenamento após uma gravação pendente no logout', async () => {
+    await Promise.all([
+      paymentTrackingStore.save('user-1', first),
+      paymentTrackingStore.clear('user-1'),
+    ]);
+    await expect(paymentTrackingStore.load('user-1')).resolves.toEqual([]);
+    expect(nativeStore.values.has('servico-domestico.payment-tracking.v1.user-1')).toBe(false);
+  });
+
+  it('permite nova operação após falha de armazenamento', async () => {
+    nativeStore.setItemAsync.mockRejectedValueOnce(new Error('indisponível'));
+    await expect(paymentTrackingStore.save('user-1', first)).rejects.toThrow('indisponível');
+    await paymentTrackingStore.save('user-1', first);
+    await expect(paymentTrackingStore.load('user-1')).resolves.toEqual([first]);
+  });
+
   it('ignora conteúdo persistido inválido sem interromper o aplicativo', async () => {
     nativeStore.values.set('servico-domestico.payment-tracking.v1.user-1', '{inválido');
     await expect(paymentTrackingStore.load('user-1')).resolves.toEqual([]);

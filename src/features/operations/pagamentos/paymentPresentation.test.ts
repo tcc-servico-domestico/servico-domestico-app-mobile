@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Pagamento } from '@/src/features/operations/contracts/pagamentos';
-import { isPagamentoTerminal, isPixExpired, paymentStatusLabel, shouldPollPagamento, transactionLabel } from './paymentPresentation';
+import { canCopyPix, formatPixExpiration, isPagamentoTerminal, isPixExpired, paymentStatusLabel, shouldPollPagamento, transactionLabel } from './paymentPresentation';
 
 const base: Pagamento = {
   id: '11111111-1111-4111-8111-111111111111', servicoId: '22222222-2222-4222-8222-222222222222', valor: 120,
@@ -14,6 +14,18 @@ describe('apresentação e monitoramento de pagamento', () => {
     const transaction = { id: '1', operacao: 'ConfirmacaoPagamento' as const, status: 'Confirmado' as const, occurredAt: '2099-01-01' };
     expect(transactionLabel(transaction)).toBe('Confirmação do pagamento: confirmado');
     expect(transactionLabel({ ...transaction, operacao: 'NovaOperacao' as typeof transaction.operacao, status: 'NovoStatus' as typeof transaction.status })).toBe('Operação desconhecida: situação desconhecida');
+  });
+  it('permite copiar somente código pendente e válido no instante do toque', () => {
+    const expiration = '2099-01-01T13:00:00Z';
+    expect(canCopyPix(base, 'codigo-de-teste', expiration, Date.parse('2099-01-01T12:59:59Z'))).toBe(true);
+    expect(canCopyPix(base, 'codigo-de-teste', expiration, Date.parse(expiration))).toBe(false);
+    expect(canCopyPix(base, null, expiration, Date.parse('2099-01-01T12:59:59Z'))).toBe(false);
+    expect(canCopyPix({ ...base, status: 'Confirmado' }, 'codigo-de-teste', expiration, Date.parse('2099-01-01T12:59:59Z'))).toBe(false);
+    expect(canCopyPix(base, 'codigo-de-teste', 'inválida', Date.parse('2099-01-01T12:59:59Z'))).toBe(false);
+  });
+  it('não apresenta uma validade inválida como data utilizável', () => {
+    expect(formatPixExpiration('data-inválida')).toBe('Validade indisponível');
+    expect(formatPixExpiration('2099-01-01T13:00:00Z')).toContain('01/01/2099');
   });
   it('mantém confirmação retida em acompanhamento e para nos estados terminais', () => {
     const confirmed = { ...base, status: 'Confirmado' as const, custodiaStatus: 'Retida' as const };

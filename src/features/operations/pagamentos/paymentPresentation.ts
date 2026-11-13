@@ -12,7 +12,17 @@ export function transactionLabel(transaction: TransacaoPagamento): string {
 }
 
 export function isPixExpired(expiraEm: string, now = Date.now()): boolean {
-  return new Date(expiraEm).getTime() <= now;
+  const expiration = new Date(expiraEm).getTime();
+  return !Number.isFinite(expiration) || expiration <= now;
+}
+
+export function formatPixExpiration(value: string): string {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return 'Validade indisponível';
+  return `Expira em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(date)}`;
+}
+export function canCopyPix(pagamento: Pagamento, pixCode: string | null | undefined, expiraEm: string | undefined, now = Date.now()): boolean {
+  return pagamento.status === 'Pendente' && Boolean(pixCode) && Boolean(expiraEm) && !isPixExpired(expiraEm!, now);
 }
 
 export function isPagamentoTerminal(pagamento: Pagamento): boolean {

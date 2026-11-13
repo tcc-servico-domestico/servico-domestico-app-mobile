@@ -25,7 +25,7 @@ function AccessibleTabs({ state, descriptors, navigation, canManageProperties }:
       const options = descriptors[route.key].options;
       const color = selected ? '#175E55' : '#465550';
       return <Pressable key={route.key} accessibilityRole="tab" accessibilityLabel={options.tabBarAccessibilityLabel}
-        accessibilityState={{ selected }} onFocus={() => setFocusedKey(route.key)} onBlur={() => setFocusedKey(null)} onPress={() => {
+        accessibilityState={{ selected }} aria-selected={selected} onFocus={() => setFocusedKey(route.key)} onBlur={() => setFocusedKey(null)} onPress={() => {
           const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
           if (!selected && !event.defaultPrevented) navigation.navigate(route.name, route.params);
         }} onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}

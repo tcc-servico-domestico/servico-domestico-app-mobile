@@ -4,14 +4,16 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Text } from 'react-native-paper';
 
 import { useAuth } from '@/src/context/AuthContext';
+import { confirmationDestination } from '@/src/features/identity/confirmationNavigation';
 import { HttpProblemError } from '@/src/shared/contracts/http';
 
 export default function ConfirmEmailScreen() {
   const { token } = useLocalSearchParams<{ token?: string | string[] }>();
-  const { confirmEmail } = useAuth();
+  const { confirmEmail, status } = useAuth();
   const router = useRouter();
   const [state, setState] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Confirmando seu e-mail…');
+  const destination = confirmationDestination(status);
 
   useEffect(() => {
     const value = Array.isArray(token) ? token[0] : token;
@@ -25,7 +27,7 @@ export default function ConfirmEmailScreen() {
     confirmEmail(value).then(() => {
       if (!active) return;
       setState('success');
-      setMessage('E-mail confirmado. Você já pode entrar.');
+      setMessage('E-mail confirmado.');
     }).catch((cause) => {
       if (!active) return;
       setState('error');
@@ -39,10 +41,12 @@ export default function ConfirmEmailScreen() {
       <Text variant="headlineSmall" accessibilityRole="header" style={styles.message}>Confirmação de e-mail</Text>
       <View accessibilityLiveRegion="polite" style={styles.status}>
         {state === 'loading' && <ActivityIndicator size="large" accessibilityLabel="Confirmando e-mail" />}
-        <Text variant="titleMedium" style={styles.message} accessibilityRole={state === 'error' ? 'alert' : undefined}>{message}</Text>
+        <Text variant="titleMedium" style={styles.message} accessibilityRole={state === 'error' ? 'alert' : undefined}>{message}{state === 'success' && status === 'anonymous' ? ' Você já pode entrar.' : ''}</Text>
       </View>
       {state !== 'loading' && (
-        <Button mode="contained" contentStyle={styles.button} accessibilityLabel="Ir para login" onPress={() => router.replace('/(auth)/login')}>Ir para login</Button>
+        <Button mode="contained" contentStyle={styles.button} accessibilityLabel={destination.label} onPress={() => router.replace(destination.route)}>
+          {destination.label}
+        </Button>
       )}
     </ScrollView>
   );

@@ -12,4 +12,9 @@ describe('mensagens de falha operacional', () => {
     expect(operationErrorMessage(new HttpProblemError({ status: 409, title: 'Conflito', detail: 'Atualize os dados.' }), 'Falha')).toBe('Atualize os dados.');
     expect(operationErrorMessage(null, 'Falha')).toBe('Falha');
   });
+
+  it('distingue sessão não autorizada de permissão insuficiente', () => {
+    expect(operationErrorMessage(new HttpProblemError({ status: 401, title: 'Unauthorized' }), 'Falha')).toBe('Sua sessão não foi autorizada. Entre novamente para continuar.');
+    expect(operationErrorMessage(new HttpProblemError({ status: 403, title: 'Forbidden' }), 'Falha')).toBe('Seu perfil não tem permissão para realizar esta ação.');
+  });
 });

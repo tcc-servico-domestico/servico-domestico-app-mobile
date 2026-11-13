@@ -56,9 +56,17 @@ export function createFetchHttpClient(config: HttpClientOptions): OperationsHttp
     if (response.status === 401) await config.onUnauthorized?.();
     if (!response.ok) {
       const contentType = response.headers.get('content-type') ?? '';
-      const problem = contentType.includes('json')
-        ? ((await response.json()) as ProblemDetails)
-        : fallbackProblem(response.status, response.headers.get('x-correlation-id'));
+      let problem = fallbackProblem(response.status, response.headers.get('x-correlation-id'));
+      if (contentType.includes('json')) {
+        try {
+          const payload: unknown = await response.json();
+          if (payload !== null && typeof payload === 'object' && !Array.isArray(payload)) {
+            problem = { ...problem, ...(payload as ProblemDetails) };
+          }
+        } catch {
+          // Respostas inválidas não devem apagar o status nem expor erro técnico de parsing.
+        }
+      }
       throw new HttpProblemError({ ...fallbackProblem(response.status, null), ...problem, status: response.status });
     }
 

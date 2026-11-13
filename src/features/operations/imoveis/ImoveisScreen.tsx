@@ -242,7 +242,7 @@ function ImovelDetail({ imovel, pending, error, actionUncertain, onBack, onEdit,
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Button title="Voltar" onPress={onBack} />
-      <Text style={styles.title}>{imovel.descricao ?? 'Imóvel sem descrição'}</Text>
+      <Text accessibilityRole="header" style={styles.title}>{imovel.descricao ?? 'Imóvel sem descrição'}</Text>
       <Text>{summary(imovel)}</Text>
       <Text>CEP: {imovel.endereco.cep}</Text><Text>Coordenadas: {imovel.latitude}, {imovel.longitude}</Text>
       <Text>Metragem: {imovel.metragemQuadrada ?? 'não informada'} m²</Text><Text>Situação: {imovel.status}</Text>

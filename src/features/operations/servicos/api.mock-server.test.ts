@@ -5,6 +5,7 @@ import { setupServer } from 'msw/node';
 import { createFetchHttpClient } from '@/src/shared/http/fetchHttpClient';
 import { createServicosApi } from './api';
 import { createOfertasApi } from '@/src/features/operations/ofertas/api';
+import { creationAttemptFor } from '@/src/features/operations/creationAttempt';
 
 const server = setupServer();
 const baseUrl = 'https://core.example.test';
@@ -40,5 +41,27 @@ describe('adaptadores v1 de serviços e ofertas', () => {
     await api.selectProfessional(service.id, '55555555-5555-4555-8555-555555555555', 1, 'select-key');
     await api.updateChecklist(service.id, service.checklists[0].id, 'EmAndamento', 2, 'check-key');
     await expect(offers.list()).resolves.toMatchObject({ total: 0 });
+  });
+
+  it('repete criação incerta com a mesma chave e não inicia outra com dados alterados', async () => {
+    let creations = 0;
+    let requests = 0;
+    const result = { servico: service, cobrancaPix: { pagamentoId: 'payment-1', pixCopiaECola: 'codigo-sintetico', expiraEm: '2099-01-01T13:00:00Z' } };
+    server.use(http.post(`${baseUrl}/api/v1/servicos`, ({ request }) => {
+      expect(request.headers.get('idempotency-key')).toBe('create-key');
+      requests += 1;
+      if (creations === 0) { creations += 1; return HttpResponse.error(); }
+      return HttpResponse.json(result, { status: 201 });
+    }));
+    const api = createServicosApi(createFetchHttpClient({ baseUrl }));
+    const input = { imovelId: service.imovelId, raioBuscaKm: 10 as const, inicioPrevisto: service.inicioPrevisto, fimPrevisto: service.fimPrevisto, valor: 100, checklists: [{ descricao: 'Limpar', ordem: 1 }] };
+    const attempt = creationAttemptFor(null, JSON.stringify(input), () => 'create-key');
+    expect(attempt).not.toBeNull();
+    await expect(api.create(input, attempt!.key)).rejects.toMatchObject({ problem: { status: 0 } });
+    const retry = creationAttemptFor(attempt, JSON.stringify(input), () => 'outra-chave');
+    expect(retry?.key).toBe('create-key');
+    await expect(api.create(input, retry!.key)).resolves.toMatchObject({ servico: { id: service.id } });
+    expect(creationAttemptFor(attempt, JSON.stringify({ ...input, valor: 120 }), () => 'outra-chave')).toBeNull();
+    expect({ requests, creations }).toEqual({ requests: 2, creations: 1 });
   });
 });

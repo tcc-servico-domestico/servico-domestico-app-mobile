@@ -12,8 +12,8 @@ import type { OperationsSession } from '@/src/shared/contracts/session';
 import { HttpProblemError } from '@/src/shared/contracts/http';
 import { createIdempotencyKey } from '@/src/features/operations/idempotency';
 import { paymentTrackingStore } from '@/src/features/operations/pagamentos/paymentTrackingStore';
-import { actionableChecklist, canCancel, canChooseProfessional, canComplete, canRespondToOffer, canStart, nextChecklistStatus } from './policy';
-import { checklistStatusLabel, propertyDescription, serviceStatusLabel } from './servicePresentation';
+import { actionableChecklist, canCancel, canChooseProfessional, canComplete, canRespondToOffer, canStart, canUpdateChecklist, nextChecklistStatus } from './policy';
+import { checklistStatusLabel, offerStatusLabel, propertyDescription, serviceStatusLabel } from './servicePresentation';
 import { allowedRadii, emptyServicoForm, toCreateServicoInput, validateServico, type ServicoFormErrors, type ServicoFormValues } from './validation';
 import { creationAttemptFor, type CreationAttempt } from '@/src/features/operations/creationAttempt';
 import { operationErrorMessage } from '@/src/features/operations/errorPresentation';
@@ -216,7 +216,7 @@ export function ServicosScreen({ servicosApi, ofertasApi, imoveisApi, session }:
         {message ? <ErrorPanel message={message} onRetry={() => void load()} /> : null}
         {loading && servicos.length === 0 ? <Center label="Carregando serviços" /> : null}
         {!loading && !message && servicos.length === 0 ? <Text style={styles.empty}>Nenhum serviço visível para este perfil.</Text> : null}
-        {isProfessional ? <OffersSection offers={ofertas} pending={mutating || offerUncertain} onRespond={respondOffer} /> : null}
+        {isProfessional && (!loading || ofertas.length > 0) && (!message || ofertas.length > 0) ? <OffersSection offers={ofertas} pending={mutating || offerUncertain} onRespond={respondOffer} /> : null}
       </View>}
     />;
 }
@@ -325,8 +325,8 @@ function ServicoDetail({ servico, imoveisApi, roles, pending, actionsDisabled, m
     return () => { active = false; };
   }, [canViewProperty, imoveisApi, servico.imovelId]);
   const next = actionableChecklist(servico); const nextStatus = next ? nextChecklistStatus(next) : null;
-  return <ScrollView contentContainerStyle={styles.container}><Button title="Voltar" onPress={onBack} disabled={pending} /><Text style={styles.title}>Detalhe do serviço</Text>{message ? <Text accessibilityRole="alert" style={styles.errorText}>{message}</Text> : null}<Text>Situação: {serviceStatusLabel(servico.status)}</Text><Text>Imóvel vinculado: {propertyLabel}</Text><Text>Início: {formatDate(servico.inicioPrevisto)}</Text><Text>Fim: {formatDate(servico.fimPrevisto)}</Text><Text>Valor: {money(servico.valor)}</Text><Text>Raio: {servico.raioBuscaKm} km</Text>{servico.profissionalId ? <Text>Profissional selecionado.</Text> : null}
-    <Text style={styles.label}>Checklists</Text>{[...servico.checklists].sort((a, b) => a.ordem - b.ordem).map((item) => <View key={item.id} style={styles.checklist}><Text>{item.ordem}. {item.descricao} — {checklistStatusLabel(item.status)}</Text>{next?.id === item.id && nextStatus && servico.status === 'EmExecucao' ? <Button title={`Marcar como ${checklistStatusLabel(nextStatus)}`} disabled={pending || actionsDisabled} onPress={() => void onChecklist(item, nextStatus)} /> : null}</View>)}
+  return <ScrollView contentContainerStyle={styles.container}><Button title="Voltar" onPress={onBack} disabled={pending} /><Text accessibilityRole="header" style={styles.title}>Detalhe do serviço</Text>{message ? <Text accessibilityRole="alert" style={styles.errorText}>{message}</Text> : null}<Text>Situação: {serviceStatusLabel(servico.status)}</Text><Text>Imóvel vinculado: {propertyLabel}</Text><Text>Início: {formatDate(servico.inicioPrevisto)}</Text><Text>Fim: {formatDate(servico.fimPrevisto)}</Text><Text>Valor: {money(servico.valor)}</Text><Text>Raio: {servico.raioBuscaKm} km</Text>{servico.profissionalId ? <Text>Profissional selecionado.</Text> : null}
+    <Text style={styles.label}>Checklists</Text>{[...servico.checklists].sort((a, b) => a.ordem - b.ordem).map((item) => <View key={item.id} style={styles.checklist}><Text>{item.ordem}. {item.descricao} — {checklistStatusLabel(item.status)}</Text>{canUpdateChecklist(roles, servico, item) && nextStatus ? <Button title={`Marcar como ${checklistStatusLabel(nextStatus)}`} disabled={pending || actionsDisabled} onPress={() => void onChecklist(item, nextStatus)} /> : null}</View>)}
     {canChooseProfessional(roles, servico.status) ? <Button title="Escolher profissional" disabled={pending || actionsDisabled} onPress={onChoose} /> : null}{canCancel(roles, servico.status) ? <Button title="Cancelar serviço" color="#a00" disabled={pending || actionsDisabled} onPress={() => setShowCancel(true)} /> : null}{canStart(roles, servico.status) ? <Button title="Iniciar serviço" disabled={pending || actionsDisabled} onPress={() => setConfirmation('start')} /> : null}{canComplete(roles, servico) ? <Button title="Concluir serviço" disabled={pending || actionsDisabled} onPress={() => setConfirmation('complete')} /> : null}<Button title="Atualizar serviço" disabled={pending} onPress={onReload} />
     <Modal transparent visible={confirmation !== null} animationType="fade" onRequestClose={() => setConfirmation(null)}><View style={styles.modalOverlay}><ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalCard}>
       <Text accessibilityRole="header" style={styles.modalTitle}>{confirmation === 'start' ? 'Iniciar serviço?' : 'Concluir serviço?'}</Text>
@@ -341,8 +341,8 @@ function OffersSection({ offers, pending, onRespond }: { readonly offers: readon
   const [confirmation, setConfirmation] = useState<{ offer: Oferta; accepted: boolean } | null>(null);
   return <View style={styles.section}>
     <Text accessibilityRole="header" style={styles.subtitle}>Minhas ofertas</Text>
-    {offers.length === 0 ? <Text>Nenhuma oferta dirigida pendente.</Text> : offers.map((offer) => <View style={styles.card} key={`${offer.servicoId}-${offer.versaoOferta}`}>
-      <Text style={styles.cardTitle}>Situação: {offer.status}</Text>
+    {offers.length === 0 ? <Text>Nenhuma oferta disponível para este perfil.</Text> : offers.map((offer) => <View style={styles.card} key={`${offer.servicoId}-${offer.versaoOferta}`}>
+      <Text style={styles.cardTitle}>Situação: {offerStatusLabel(offer.status)}</Text>
       <Text>{formatDate(offer.inicioPrevisto)} · {money(offer.valor)}</Text>
       <Text>Pagamento: {offer.pagamentoConfirmado ? 'confirmado' : 'aguardando confirmação'}</Text>
       <Text>Expira em {formatDate(offer.expiraEmUtc)}</Text>

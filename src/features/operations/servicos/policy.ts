@@ -26,6 +26,11 @@ export function actionableChecklist(servico: Servico): Checklist | null {
   return [...servico.checklists].sort((a, b) => a.ordem - b.ordem).find((item) => item.status !== 'Concluida') ?? null;
 }
 
+export function canUpdateChecklist(roles: readonly OperationsRole[], servico: Servico, checklist: Checklist): boolean {
+  return hasRole(roles, 'Profissional') && servico.status === 'EmExecucao' &&
+    actionableChecklist(servico)?.id === checklist.id && nextChecklistStatus(checklist) !== null;
+}
+
 export function canComplete(roles: readonly OperationsRole[], servico: Servico): boolean {
   return hasRole(roles, 'Profissional') && servico.status === 'EmExecucao' && servico.checklists.every((item) => item.status === 'Concluida');
 }

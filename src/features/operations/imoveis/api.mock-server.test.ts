@@ -40,4 +40,27 @@ describe('ImoveisApi com servidor mockado', () => {
     const api = createImoveisApi(createFetchHttpClient({ baseUrl: 'https://core.example.test' }));
     await expect(api.deactivate('imovel-1', 3)).resolves.toBeUndefined();
   });
+
+  it('permite consultar a alteração aplicada após perda de resposta e rejeita versão antiga', async () => {
+    const input = {
+      descricao: 'Casa atualizada', metragemQuadrada: 80, latitude: -15.79, longitude: -47.88,
+      endereco: { logradouro: 'Rua A', numero: 10, complemento: null, bairro: 'Centro', cidade: 'Brasília', uf: 'DF', cep: '70000-000' },
+    };
+    let saved = { ...input, descricao: 'Casa anterior', id: 'imovel-1', status: 'Ativo', aggregateVersion: 1 };
+    server.use(
+      http.get('https://core.example.test/api/v1/imoveis/imovel-1', () => HttpResponse.json(saved)),
+      http.put('https://core.example.test/api/v1/imoveis/imovel-1', async ({ request }) => {
+        if (request.headers.get('if-match') !== `"${saved.aggregateVersion}"`) {
+          return HttpResponse.json({ title: 'Versão desatualizada', status: 412 }, { status: 412 });
+        }
+        saved = { ...saved, ...await request.json() as typeof input, aggregateVersion: saved.aggregateVersion + 1 };
+        return HttpResponse.error();
+      }),
+    );
+    const api = createImoveisApi(createFetchHttpClient({ baseUrl: 'https://core.example.test' }));
+    await expect(api.update('imovel-1', input, 1)).rejects.toMatchObject({ problem: { status: 0 } });
+    await expect(api.get('imovel-1')).resolves.toMatchObject({ descricao: 'Casa atualizada', aggregateVersion: 2 });
+    await expect(api.update('imovel-1', input, 1)).rejects.toMatchObject({ name: 'HttpProblemError', problem: { status: 412 } });
+    expect(saved.aggregateVersion).toBe(2);
+  });
 });

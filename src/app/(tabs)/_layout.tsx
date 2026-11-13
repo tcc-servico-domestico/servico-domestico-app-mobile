@@ -1,10 +1,18 @@
 import { Tabs } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { PlatformPressable } from '@react-navigation/elements';
 import { useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import type { BottomTabBarButtonProps, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useAuth } from '@/src/context/AuthContext';
+
+function FocusableTabButton({ style, onFocus, onBlur, ...props }: BottomTabBarButtonProps) {
+  const [focused, setFocused] = useState(false);
+  return <PlatformPressable {...props} onFocus={(event) => { setFocused(true); onFocus?.(event); }}
+    onBlur={(event) => { setFocused(false); onBlur?.(event); }}
+    style={[style, { borderWidth: 2, borderColor: focused ? '#175E55' : 'transparent', borderRadius: 6 }]} />;
+}
 
 function AccessibleTabs({ state, descriptors, navigation, canManageProperties }: BottomTabBarProps & { canManageProperties: boolean }) {
   const insets = useSafeAreaInsets();
@@ -36,6 +44,7 @@ export default function TabsLayout() {
     <Tabs tabBar={fontScale > 1.3 ? (props) => <AccessibleTabs {...props} canManageProperties={!!session?.roles.includes('Cliente')} /> : undefined} screenOptions={{
       tabBarActiveTintColor: '#175E55',
       tabBarInactiveTintColor: '#465550',
+      tabBarButton: (props) => <FocusableTabButton {...props} />,
     }}>
       <Tabs.Screen
         name="home"

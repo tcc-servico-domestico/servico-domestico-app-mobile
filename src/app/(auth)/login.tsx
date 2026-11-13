@@ -96,7 +96,7 @@ export default function LoginScreen() {
             accessibilityLabel="Continuar conectado"
             accessibilityState={{ checked: manterConectado }}
           >
-          <View style={styles.checkbox}>
+          <View style={styles.checkbox} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             <Checkbox
                 status={manterConectado ? 'checked' : 'unchecked'}
                 onPress={() => setManterConectado(!manterConectado)}

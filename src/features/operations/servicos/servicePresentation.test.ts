@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Imovel } from '@/src/features/operations/contracts/imoveis';
-import { checklistStatusLabel, propertyDescription, serviceStatusLabel } from './servicePresentation';
+import { checklistStatusLabel, offerStatusLabel, propertyDescription, serviceStatusLabel } from './servicePresentation';
 
 describe('apresentação de serviços', () => {
   it('traduz estados e identifica valores desconhecidos', () => {
@@ -9,6 +9,8 @@ describe('apresentação de serviços', () => {
     expect(serviceStatusLabel('Outro')).toBe('Situação do serviço desconhecida');
     expect(checklistStatusLabel('EmAndamento')).toBe('Em andamento');
     expect(checklistStatusLabel('Outro')).toBe('Situação desconhecida');
+    expect(offerStatusLabel('Aceita')).toBe('Aceita');
+    expect(offerStatusLabel('Outro')).toBe('Situação da oferta desconhecida');
   });
 
   it('não consulta imóvel para perfil sem acesso e informa falhas sem expor identificador', async () => {

@@ -18,6 +18,9 @@ const serviceStatuses: Record<string, string> = {
 const checklistStatuses: Record<string, string> = {
   Pendente: 'Pendente', EmAndamento: 'Em andamento', Concluida: 'Concluída',
 };
+const offerStatuses: Record<string, string> = {
+  Pendente: 'Pendente', Aceita: 'Aceita', Recusada: 'Recusada', Expirada: 'Expirada', Cancelada: 'Cancelada',
+};
 
 export function serviceStatusLabel(status: string): string {
   return serviceStatuses[status] ?? 'Situação do serviço desconhecida';
@@ -25,4 +28,8 @@ export function serviceStatusLabel(status: string): string {
 
 export function checklistStatusLabel(status: string): string {
   return checklistStatuses[status] ?? 'Situação desconhecida';
+}
+
+export function offerStatusLabel(status: string): string {
+  return offerStatuses[status] ?? 'Situação da oferta desconhecida';
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { actionableChecklist, canCancel, canChooseProfessional, canComplete, canRespondToOffer, canStart, nextChecklistStatus } from './policy';
+import { actionableChecklist, canCancel, canChooseProfessional, canComplete, canRespondToOffer, canStart, canUpdateChecklist, nextChecklistStatus } from './policy';
 import type { Oferta } from '@/src/features/operations/contracts/ofertas';
 import type { Servico } from '@/src/features/operations/contracts/servicos';
 
@@ -28,5 +28,13 @@ describe('política de ações do serviço', () => {
     expect(canComplete(['Profissional'], servico)).toBe(false);
     const complete = { ...servico, checklists: servico.checklists.map((item) => ({ ...item, status: 'Concluida' as const })) };
     expect(canComplete(['Profissional'], complete)).toBe(true);
+  });
+
+  it('restringe a atualização da checklist ao profissional e ao item corrente em execução', () => {
+    const current = actionableChecklist(servico)!;
+    expect(canUpdateChecklist(['Profissional'], servico, current)).toBe(true);
+    expect(canUpdateChecklist(['Cliente'], servico, current)).toBe(false);
+    expect(canUpdateChecklist(['Profissional'], servico, servico.checklists[0])).toBe(false);
+    expect(canUpdateChecklist(['Profissional'], { ...servico, status: 'Aceito' }, current)).toBe(false);
   });
 });

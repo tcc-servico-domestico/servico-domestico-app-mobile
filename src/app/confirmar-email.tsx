@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Text } from 'react-native-paper';
 
 import { useAuth } from '@/src/context/AuthContext';
@@ -35,17 +35,22 @@ export default function ConfirmEmailScreen() {
   }, [confirmEmail, token]);
 
   return (
-    <View style={styles.container} accessibilityLiveRegion="polite">
-      {state === 'loading' && <ActivityIndicator size="large" accessibilityLabel="Confirmando e-mail" />}
-      <Text variant="titleMedium" style={styles.message} accessibilityRole={state === 'error' ? 'alert' : undefined}>{message}</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text variant="headlineSmall" accessibilityRole="header" style={styles.message}>Confirmação de e-mail</Text>
+      <View accessibilityLiveRegion="polite" style={styles.status}>
+        {state === 'loading' && <ActivityIndicator size="large" accessibilityLabel="Confirmando e-mail" />}
+        <Text variant="titleMedium" style={styles.message} accessibilityRole={state === 'error' ? 'alert' : undefined}>{message}</Text>
+      </View>
       {state !== 'loading' && (
-        <Button mode="contained" onPress={() => router.replace('/(auth)/login')}>Ir para login</Button>
+        <Button mode="contained" contentStyle={styles.button} accessibilityLabel="Ir para login" onPress={() => router.replace('/(auth)/login')}>Ir para login</Button>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 24, padding: 24 },
+  container: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', gap: 24, padding: 24 },
+  status: { alignItems: 'center', gap: 16 },
+  button: { minHeight: 48 },
   message: { textAlign: 'center' },
 });

@@ -20,8 +20,8 @@ export function isPagamentoTerminal(pagamento: Pagamento): boolean {
     (pagamento.status === 'Confirmado' && pagamento.custodiaStatus === 'Liberada');
 }
 
-export function shouldPollPagamento(pagamento: Pagamento, expiraEm: string | undefined, now = Date.now()): boolean {
-  return !isPagamentoTerminal(pagamento) && !(expiraEm && isPixExpired(expiraEm, now));
+export function shouldPollPagamento(pagamento: Pagamento): boolean {
+  return !isPagamentoTerminal(pagamento);
 }
 
 export function paymentStatusLabel(pagamento: Pagamento): string {

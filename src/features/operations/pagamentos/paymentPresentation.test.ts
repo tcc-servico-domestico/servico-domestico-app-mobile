@@ -18,16 +18,16 @@ describe('apresentação e monitoramento de pagamento', () => {
   it('mantém confirmação retida em acompanhamento e para nos estados terminais', () => {
     const confirmed = { ...base, status: 'Confirmado' as const, custodiaStatus: 'Retida' as const };
     expect(isPagamentoTerminal(confirmed)).toBe(false);
-    expect(shouldPollPagamento(confirmed, '2099-01-01T13:00:00Z', Date.parse('2099-01-01T12:01:00Z'))).toBe(true);
+    expect(shouldPollPagamento(confirmed)).toBe(true);
     expect(isPagamentoTerminal({ ...confirmed, custodiaStatus: 'Liberada' })).toBe(true);
     expect(isPagamentoTerminal({ ...base, status: 'Falhou', custodiaStatus: 'Falhou' })).toBe(true);
     expect(isPagamentoTerminal({ ...base, status: 'Estornado', custodiaStatus: 'Estornada' })).toBe(true);
   });
 
-  it('trata expiração como limite local e apresenta os estados financeiros', () => {
+  it('mantém acompanhamento após expirar o código e apresenta os estados financeiros', () => {
     const now = Date.parse('2099-01-01T13:00:00Z');
     expect(isPixExpired('2099-01-01T13:00:00Z', now)).toBe(true);
-    expect(shouldPollPagamento(base, '2099-01-01T13:00:00Z', now)).toBe(false);
+    expect(shouldPollPagamento(base)).toBe(true);
     expect(paymentStatusLabel(base)).toBe('Aguardando pagamento');
     expect(paymentStatusLabel({ ...base, status: 'Confirmado', custodiaStatus: 'Retida' })).toContain('custódia');
     expect(paymentStatusLabel({ ...base, status: 'Estornado', custodiaStatus: 'Estornada' })).toBe('Pagamento estornado');

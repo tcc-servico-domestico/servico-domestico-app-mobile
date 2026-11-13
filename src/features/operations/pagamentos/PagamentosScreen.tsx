@@ -92,11 +92,11 @@ export function PagamentosScreen({ api, session, initialPagamentoId, onRouteSele
         setPayments((items) => updateCollection(items, next));
         setMessage(null);
         const currentTracked = trackedById.get(selectedId);
-        if (currentTracked && (isPixExpired(currentTracked.expiraEm) || isPagamentoTerminal(next))) {
+        if (currentTracked?.pixCopiaECola && (isPixExpired(currentTracked.expiraEm) || isPagamentoTerminal(next))) {
           await paymentTrackingStore.removePixCode(session.userId, selectedId);
           if (!disposed) setTracked((items) => items.map((item) => item.pagamentoId === selectedId ? { ...item, pixCopiaECola: null } : item));
         }
-        if (shouldPollPagamento(next, currentTracked?.expiraEm)) timer = setTimeout(() => void poll(), 5000);
+        if (shouldPollPagamento(next)) timer = setTimeout(() => void poll(), 5000);
       } catch (error) {
         if (!disposed) setMessage(friendlyError(error));
       } finally {

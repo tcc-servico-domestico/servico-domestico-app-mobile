@@ -1,4 +1,15 @@
-import type { Pagamento } from '@/src/features/operations/contracts/pagamentos';
+import type { Pagamento, TransacaoPagamento } from '@/src/features/operations/contracts/pagamentos';
+
+export function transactionLabel(transaction: TransacaoPagamento): string {
+  const operations: Record<string, string> = {
+    CriacaoCobranca: 'Criação da cobrança', ConfirmacaoPagamento: 'Confirmação do pagamento',
+    LiberacaoCustodia: 'Liberação da custódia', Recebimento: 'Recebimento', Repasse: 'Repasse', Estorno: 'Estorno',
+  };
+  const statuses: Record<string, string> = {
+    Pendente: 'pendente', Confirmado: 'confirmado', Falhou: 'falhou', Estornado: 'estornado', Liberado: 'liberado', Incerto: 'em conciliação',
+  };
+  return `${operations[transaction.operacao] ?? 'Operação desconhecida'}: ${statuses[transaction.status] ?? 'situação desconhecida'}`;
+}
 
 export function isPixExpired(expiraEm: string, now = Date.now()): boolean {
   const expiration = new Date(expiraEm).getTime();
@@ -24,6 +35,7 @@ export function shouldPollPagamento(pagamento: Pagamento): boolean {
 }
 
 export function paymentStatusLabel(pagamento: Pagamento): string {
+  if (pagamento.status === 'EmConciliacao') return 'Pagamento em conciliação';
   if (pagamento.status === 'Pendente') return 'Aguardando pagamento';
   if (pagamento.status === 'Falhou') return 'Pagamento recusado';
   if (pagamento.status === 'Estornado') return 'Pagamento estornado';

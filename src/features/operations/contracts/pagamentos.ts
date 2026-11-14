@@ -1,16 +1,19 @@
 import type { Page } from '@/src/features/operations/contracts/imoveis';
 import type { OperationsHttpClient } from '@/src/shared/contracts/http';
 
-export type PagamentoStatus = 'Pendente' | 'Confirmado' | 'Falhou' | 'Estornado';
-export type TransacaoPagamentoStatus = PagamentoStatus | 'Liberado';
+export type PagamentoStatus = 'EmConciliacao' | 'Pendente' | 'Confirmado' | 'Falhou' | 'Estornado' | 'Desconhecido';
+export type TransacaoPagamentoStatus = PagamentoStatus | 'Liberado' | 'Incerto';
 export type RecebimentoStatus = 'Pendente' | 'Recebido' | 'Desconhecido';
-export type CustodiaStatus = 'NaoIniciada' | 'Retida' | 'Liberada' | 'Estornada' | 'Falhou';
+export type CustodiaStatus = 'NaoIniciada' | 'Retida' | 'Liberada' | 'Estornada' | 'Falhou' | 'Desconhecida';
+export type GarantiaStatus = 'NaoConstituida' | 'Ativa' | 'Encerrada' | 'Desconhecida';
+export type DisponibilidadeStatus = 'Disponivel' | 'Indisponivel' | 'Desconhecida';
 
 export interface TransacaoPagamento {
   readonly id: string;
-  readonly operacao: 'CriacaoCobranca' | 'ConfirmacaoPagamento' | 'LiberacaoCustodia' | 'Estorno';
+  readonly operacao: 'CriacaoCobranca' | 'ConfirmacaoPagamento' | 'LiberacaoCustodia' | 'Recebimento' | 'Repasse' | 'Estorno';
   readonly status: TransacaoPagamentoStatus;
-  readonly occurredAt: string;
+  readonly occurredAt?: string;
+  readonly observadoEm?: string;
   readonly gatewayId?: string;
   readonly motivo?: string | null;
 }
@@ -24,10 +27,13 @@ export interface Pagamento {
   readonly status: PagamentoStatus;
   readonly custodiaStatus: CustodiaStatus;
   readonly recebimentoStatus?: RecebimentoStatus;
+  readonly disponibilidadeStatus?: DisponibilidadeStatus;
+  readonly garantiaStatus?: GarantiaStatus;
+  readonly origem?: 'Fake' | 'AsaasSandbox';
   readonly requestedAt: string;
-  readonly paidAt: string | null;
-  readonly createdAt: string;
-  readonly updatedAt: string | null;
+  readonly paidAt?: string | null;
+  readonly createdAt?: string;
+  readonly updatedAt?: string | null;
   readonly aggregateVersion: number;
   readonly transacoes: readonly TransacaoPagamento[];
 }

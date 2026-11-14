@@ -6,6 +6,19 @@ import { createFetchHttpClient } from '@/src/shared/http/fetchHttpClient';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('fetchHttpClient', () => {
+  it.each([200, 202, 204])('aceita resposta de sucesso %i sem corpo', async (status) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status })));
+    const client = createFetchHttpClient({ baseUrl: 'https://api.example.test' });
+    await expect(client.post('/alterar-email', { email: 'novo@example.invalid' })).resolves.toBeUndefined();
+  });
+
+  it('rejeita JSON de sucesso malformado em vez de declarar confirmação', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{', {
+      status: 200, headers: { 'content-type': 'application/json' },
+    })));
+    const client = createFetchHttpClient({ baseUrl: 'https://api.example.test' });
+    await expect(client.get('/conta')).rejects.toThrow();
+  });
   it('adds query, token and JSON body', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: '1' }), {
       status: 200,

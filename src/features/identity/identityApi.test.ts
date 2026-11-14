@@ -1,13 +1,67 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createIdentityApi } from '@/src/features/identity/identityApi';
 import type { OperationsHttpClient } from '@/src/shared/contracts/http';
+import { HttpProblemError } from '@/src/shared/contracts/http';
+import { createFetchHttpClient } from '@/src/shared/http/fetchHttpClient';
+
+afterEach(() => vi.unstubAllGlobals());
 
 function token(payload: Record<string, unknown>) {
   return `header.${btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')}.signature`;
 }
 
 describe('identityApi', () => {
+  it('conclui solicitações com respostas HTTP reais sem corpo', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(null, { status: 202 }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const api = createIdentityApi(createFetchHttpClient({ baseUrl: 'https://api.example.test' }));
+    await expect(api.requestEmailChange('user-1', 'novo@example.invalid')).resolves.toBeUndefined();
+    await expect(api.confirmEmailChange('token-sintetico')).resolves.toBeUndefined();
+    await expect(api.deleteAccount('user-1')).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+  it('loads the authenticated user profile and propagates failures', async () => {
+    const profile = { id: 'user-1', email: 'pessoa@example.invalid', ativo: true, emailVerificado: true, emailPendente: 'novo@example.invalid' };
+    const get = vi.fn().mockResolvedValueOnce(profile).mockRejectedValueOnce(new Error('indisponível'));
+    const api = createIdentityApi({ get } as unknown as OperationsHttpClient);
+
+    await expect(api.getProfile('user-1')).resolves.toEqual(profile);
+    expect(get).toHaveBeenCalledWith('/Usuario/user-1');
+    await expect(api.getProfile('user-1')).rejects.toThrow('indisponível');
+  });
+
+  it('propagates an unauthorized profile response for the session handler', async () => {
+    const unauthorized = new HttpProblemError({ title: 'Sessão inválida', status: 401 });
+    const get = vi.fn().mockRejectedValue(unauthorized);
+    await expect(createIdentityApi({ get } as unknown as OperationsHttpClient).getProfile('user-1'))
+      .rejects.toBe(unauthorized);
+  });
+
+  it('requests an email change without declaring the new address confirmed', async () => {
+    const post = vi.fn().mockResolvedValue(undefined);
+    const api = createIdentityApi({ post } as unknown as OperationsHttpClient);
+    await api.requestEmailChange('user-1', 'novo@example.invalid');
+    expect(post).toHaveBeenCalledWith('/Usuario/user-1/alterar-email', { email: 'novo@example.invalid' });
+  });
+
+  it('sends the opaque change token to its own confirmation endpoint', async () => {
+    const get = vi.fn().mockResolvedValue(undefined);
+    const api = createIdentityApi({ get } as unknown as OperationsHttpClient);
+    await api.confirmEmailChange('a/b+c=');
+    expect(get).toHaveBeenCalledWith('/Usuario/confirmar-alteracao-email/a%2Fb%2Bc%3D');
+  });
+
+  it('sends one account deletion request and propagates an uncertain failure', async () => {
+    const failure = new Error('resposta desconhecida');
+    const remove = vi.fn().mockRejectedValue(failure);
+    const api = createIdentityApi({ delete: remove } as unknown as OperationsHttpClient);
+    await expect(api.deleteAccount('user-1')).rejects.toBe(failure);
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(remove).toHaveBeenCalledWith('/Usuario/user-1');
+  });
   it('maps JWT claims into the shared authenticated session', async () => {
     const post = vi.fn().mockResolvedValue({
       accessToken: token({ sub: 'user-1', role: ['Cliente'], exp: 1_800_000_000 }),

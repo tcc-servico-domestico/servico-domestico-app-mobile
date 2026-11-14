@@ -14,6 +14,7 @@ export default function Home() {
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <Text>Bem-vindo ao app autenticado!</Text>
+      <Button title="Minha conta" onPress={() => router.push('../perfil')} />
       <Button title="Sair" onPress={handleLogout} />
     </View>
   );

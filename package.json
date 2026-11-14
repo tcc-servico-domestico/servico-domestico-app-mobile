@@ -49,9 +49,11 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@types/react": "~19.2.10",
+    "@types/react-test-renderer": "^19.3.1",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~55.0.1",
     "msw": "^2.15.0",
+    "react-test-renderer": "^19.2.0",
     "typescript": "~5.9.2",
     "vitest": "^4.0.0"
   },

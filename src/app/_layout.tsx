@@ -23,13 +23,16 @@ function RootNavigation() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
       <Stack.Protected guard={status === 'authenticated'}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="perfil" options={{ headerShown: true, title: 'Minha conta' }} />
       </Stack.Protected>
       <Stack.Protected guard={status === 'anonymous'}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
       <Stack.Screen name="confirmar-email" options={{ headerShown: true, title: 'Confirmar e-mail' }} />
+      <Stack.Screen name="confirmar-alteracao-email" options={{ headerShown: true, title: 'Confirmar novo e-mail' }} />
     </Stack>
   );
 }

@@ -63,7 +63,9 @@ export function createFetchHttpClient(config: HttpClientOptions): OperationsHttp
     }
 
     if (response.status === 204) return undefined as TResponse;
-    return (await response.json()) as TResponse;
+    const content = await response.text();
+    if (!content.trim()) return undefined as TResponse;
+    return JSON.parse(content) as TResponse;
   }
 
   return {

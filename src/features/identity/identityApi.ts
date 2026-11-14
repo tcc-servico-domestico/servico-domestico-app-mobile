@@ -61,5 +61,17 @@ export function createIdentityApi(http: OperationsHttpClient, now = () => Date.n
     async confirmEmail(token: string) {
       await http.get(`/Usuario/confirmar-email/${encodeURIComponent(token)}`);
     },
+    async getProfile(userId: string) {
+      return http.get(`/Usuario/${encodeURIComponent(userId)}`);
+    },
+    async requestEmailChange(userId: string, email: string) {
+      await http.post(`/Usuario/${encodeURIComponent(userId)}/alterar-email`, { email });
+    },
+    async confirmEmailChange(token: string) {
+      await http.get(`/Usuario/confirmar-alteracao-email/${encodeURIComponent(token)}`);
+    },
+    async deleteAccount(userId: string) {
+      await http.delete(`/Usuario/${encodeURIComponent(userId)}`);
+    },
   };
 }

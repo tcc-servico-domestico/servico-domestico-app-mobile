@@ -90,6 +90,13 @@ export function createOfflineDemoRuntime(): OfflineDemoRuntime {
     login: async () => clientSession,
     register: async () => undefined,
     confirmEmail: async () => undefined,
+    getProfile: async (userId) => {
+      if (!session || session.userId !== userId) throw new Error('Conta sintética não encontrada.');
+      return { id: userId, email: 'demo@example.invalid', ativo: true, emailVerificado: true };
+    },
+    requestEmailChange: async () => { throw new Error('Alteração de e-mail indisponível na demonstração offline.'); },
+    confirmEmailChange: async () => { throw new Error('Confirmação indisponível na demonstração offline.'); },
+    deleteAccount: async () => { throw new Error('Exclusão indisponível na demonstração offline.'); },
   };
 
   const imoveisApi: ImoveisApi = {

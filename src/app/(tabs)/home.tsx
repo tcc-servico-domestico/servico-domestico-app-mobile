@@ -18,6 +18,7 @@ export default function Home() {
       {session?.roles.includes('Cliente') ? <Text style={styles.body}>Em Imóveis, você pode consultar e gerenciar seus imóveis.</Text> : null}
       <Text style={styles.body}>Em Serviços, consulte os serviços e as ações disponíveis para seu perfil.</Text>
       <Text style={styles.body}>Em Pagamentos, acompanhe os pagamentos disponíveis.</Text>
+      <Button title="Minha conta" color="#175E55" onPress={() => router.push('../perfil')} />
       <Button title="Sair da conta" color="#175E55" onPress={handleLogout} />
     </ScrollView>
   );

@@ -138,7 +138,7 @@ export function PagamentosScreen({ api, session, initialPagamentoId, onRouteSele
 }
 
 function TransactionHistory({ pagamento }: { readonly pagamento: Pagamento }) {
-  return <View style={styles.history}><Text accessibilityRole="header" style={styles.subtitle}>Histórico</Text>{pagamento.transacoes.length === 0 ? <Text>Nenhuma movimentação disponível.</Text> : [...pagamento.transacoes].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt)).map((item) => <View key={item.id}><Text>{transactionLabel(item)}</Text>{item.motivo ? <Text>{item.motivo}</Text> : null}</View>)}</View>;
+  return <View style={styles.history}><Text accessibilityRole="header" style={styles.subtitle}>Histórico</Text>{pagamento.transacoes.length === 0 ? <Text>Nenhuma movimentação disponível.</Text> : [...pagamento.transacoes].sort((a, b) => (a.observadoEm ?? a.occurredAt ?? '').localeCompare(b.observadoEm ?? b.occurredAt ?? '')).map((item) => <View key={item.id}><Text>{transactionLabel(item)}</Text>{item.motivo ? <Text>{item.motivo}</Text> : null}</View>)}</View>;
 }
 
 function ErrorPanel({ message, onRetry }: { readonly message: string; readonly onRetry: () => void }) {

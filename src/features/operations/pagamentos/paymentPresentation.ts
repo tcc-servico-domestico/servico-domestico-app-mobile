@@ -27,6 +27,7 @@ export function canCopyPix(pagamento: Pagamento, pixCode: string | null | undefi
 
 export function isPagamentoTerminal(pagamento: Pagamento): boolean {
   return pagamento.status === 'Falhou' || pagamento.status === 'Estornado' ||
+    pagamento.transacoes.some((item) => item.operacao === 'Repasse' && item.status === 'Confirmado') ||
     (pagamento.status === 'Confirmado' && pagamento.custodiaStatus === 'Liberada');
 }
 
@@ -39,6 +40,12 @@ export function paymentStatusLabel(pagamento: Pagamento): string {
   if (pagamento.status === 'Pendente') return 'Aguardando pagamento';
   if (pagamento.status === 'Falhou') return 'Pagamento recusado';
   if (pagamento.status === 'Estornado') return 'Pagamento estornado';
+  if (pagamento.status !== 'Confirmado') return 'Situação do pagamento desconhecida';
+  const movimento = pagamento.transacoes.find((item) => item.operacao === 'Repasse' || item.operacao === 'Estorno');
+  if (movimento) {
+    if (movimento.operacao === 'Repasse' && movimento.status === 'Confirmado') return 'Valor repassado ao profissional';
+    return transactionLabel(movimento);
+  }
   if (pagamento.custodiaStatus === 'Liberada') return 'Valor liberado ao profissional';
   if (pagamento.recebimentoStatus === 'Pendente') return 'Pagamento confirmado; recebimento pendente';
   if (pagamento.recebimentoStatus === 'Recebido') return 'Pagamento confirmado; valor recebido';

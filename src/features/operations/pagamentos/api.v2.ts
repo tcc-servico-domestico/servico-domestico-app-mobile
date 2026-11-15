@@ -60,7 +60,6 @@ function pagamentoV2(value: unknown): Pagamento {
   };
 }
 
-// Candidato separado: o app continua usando explicitamente a API v1 ate a aprovacao v2.
 export function createPagamentosV2Api(http: OperationsHttpClient): PagamentosApi {
   return {
     async list(input = {}): Promise<Page<Pagamento>> {
@@ -78,6 +77,15 @@ export function createPagamentosV2Api(http: OperationsHttpClient): PagamentosApi
       const pagamento = pagamentoV2(await http.get<unknown>(`${path}/${encodeURIComponent(pagamentoId)}`));
       if (pagamento.id.toLowerCase() !== pagamentoId.toLowerCase()) return invalido();
       return pagamento;
+    },
+    async getPix(pagamentoId) {
+      if (!idValido(pagamentoId)) return invalido();
+      const item = objeto(await http.get<unknown>(`${path}/cobrancas-pix/${encodeURIComponent(pagamentoId)}`));
+      if (!camposPermitidos(item, ['pagamentoId', 'pixCopiaECola', 'expiraEm', 'status']) ||
+          !idValido(item.pagamentoId) || item.pagamentoId.toLowerCase() !== pagamentoId.toLowerCase() ||
+          !utcValido(item.expiraEm) || !pertence(item.status, [...statusPagamento, 'Expirado']) ||
+          (item.pixCopiaECola !== null && typeof item.pixCopiaECola !== 'string')) return invalido();
+      return { pixCopiaECola: item.status === 'Pendente' ? item.pixCopiaECola : null, expiraEm: item.expiraEm };
     },
   };
 }

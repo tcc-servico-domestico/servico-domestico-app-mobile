@@ -2,11 +2,14 @@ import { ActivityIndicator, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import { PagamentosScreen } from '@/src/features/operations/pagamentos/PagamentosScreen';
+import { createPagamentosV2Api } from '@/src/features/operations/pagamentos/api.v2';
 import { createPagamentosApi } from '@/src/features/operations/pagamentos/api';
 import { useAuth } from '@/src/context/AuthContext';
-import { paymentHttpClient } from '@/src/shared/runtime';
+import { environment, paymentHttpClient } from '@/src/shared/runtime';
 
-const pagamentosApi = createPagamentosApi(paymentHttpClient);
+const pagamentosApi = environment.consultarPixAsaas
+  ? createPagamentosV2Api(paymentHttpClient)
+  : createPagamentosApi(paymentHttpClient);
 
 export default function PagamentosRoute() {
   const { session, status } = useAuth();

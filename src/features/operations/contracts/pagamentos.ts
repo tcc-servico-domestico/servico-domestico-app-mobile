@@ -47,6 +47,7 @@ export interface CobrancaPix {
 export interface PagamentosApi {
   list(input?: { readonly page?: number; readonly pageSize?: number; readonly status?: PagamentoStatus }): Promise<Page<Pagamento>>;
   get(pagamentoId: string): Promise<Pagamento>;
+  getPix?(pagamentoId: string): Promise<{ readonly pixCopiaECola: string | null; readonly expiraEm: string }>;
 }
 
 export type PagamentosApiFactory = (http: OperationsHttpClient) => PagamentosApi;

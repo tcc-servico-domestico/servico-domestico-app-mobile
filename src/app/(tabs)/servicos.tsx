@@ -6,9 +6,9 @@ import { createAvaliacoesApi } from '@/src/features/operations/avaliacoes/api';
 import { createOfertasApi } from '@/src/features/operations/ofertas/api';
 import { createImoveisApi } from '@/src/features/operations/imoveis/api';
 import { useAuth } from '@/src/context/AuthContext';
-import { httpClient } from '@/src/shared/runtime';
+import { environment, httpClient } from '@/src/shared/runtime';
 
-const servicosApi = createServicosApi(httpClient);
+const servicosApi = createServicosApi(httpClient, environment.asaasSandbox);
 const ofertasApi = createOfertasApi(httpClient);
 const imoveisApi = createImoveisApi(httpClient);
 const avaliacoesApi = createAvaliacoesApi(httpClient);

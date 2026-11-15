@@ -22,6 +22,8 @@ export function PixChargeCard({ pagamento, tracked }: Props) {
   const expired = tracked ? isPixExpired(tracked.expiraEm) : false;
   const pixCode = tracked?.pixCopiaECola;
   const canShowPix = canCopyPix(pagamento, pixCode, tracked?.expiraEm);
+  const sandbox = pagamento.origem === 'AsaasSandbox';
+  const titulo = sandbox ? 'Pix Asaas em homologação' : 'Pagamento Pix simulado';
 
   const copy = async () => {
     if (!pixCode || !canCopyPix(pagamento, pixCode, tracked?.expiraEm)) {
@@ -36,18 +38,18 @@ export function PixChargeCard({ pagamento, tracked }: Props) {
     }
   };
 
-  return <View style={styles.card} accessibilityLabel="Pagamento Pix simulado">
-    <Text style={styles.title}>Pagamento Pix simulado</Text>
-    <Text accessibilityRole="alert" style={styles.notice}>Não realiza transação financeira real.</Text>
+  return <View style={styles.card} accessibilityLabel={titulo}>
+    <Text style={styles.title}>{titulo}</Text>
+    {sandbox ? null : <Text accessibilityRole="alert" style={styles.notice}>Não realiza transação financeira real.</Text>}
     <Text>{paymentStatusLabel(pagamento)}</Text>
     <Text>Valor: {money(pagamento.valor)}</Text>
     {tracked ? <Text>{formatPixExpiration(tracked.expiraEm)}</Text> : null}
     {pagamento.status === 'Pendente' && expired ? <Text accessibilityRole="alert" style={styles.expired}>Código Pix expirado. Atualize o pagamento para consultar a situação.</Text> : null}
     {pagamento.status === 'Pendente' && !expired && !pixCode ? <Text>Código Pix indisponível neste dispositivo. Atualize o pagamento para consultar a situação.</Text> : null}
     {canShowPix ? <>
-      <View accessibilityLabel="Código QR para o Pix simulado" style={styles.qr}>
+      {!sandbox && <View accessibilityLabel="Código QR para o Pix simulado" style={styles.qr}>
         <QRCode value={pixCode!} size={180} />
-      </View>
+      </View>}
       <Text selectable accessibilityLabel="Código Pix copia e cola">{pixCode}</Text>
       <Button title="Copiar código Pix" onPress={() => void copy()} />
     </> : null}

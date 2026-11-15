@@ -53,7 +53,7 @@ export interface CreateServicoInput {
 
 export interface CobrancaPixCriada {
   readonly pagamentoId: string;
-  readonly pixCopiaECola: string;
+  readonly pixCopiaECola: string | null;
   readonly expiraEm: string;
 }
 

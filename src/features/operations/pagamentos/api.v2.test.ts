@@ -60,4 +60,15 @@ describe('pagamentos v2 candidatos', () => {
     expect(pagina.total).toBe(1);
     expect(http.get).toHaveBeenCalledWith('/api/v2/pagamentos', { query: { page: 1, pageSize: 20 } });
   });
+
+  it('recupera o código pendente e só o utiliza para o pagamento solicitado', async () => {
+    const http = client();
+    const api = createPagamentosV2Api(http);
+    const pix = { pagamentoId: pagamento.id, pixCopiaECola: 'codigo-teste', expiraEm: '2099-01-01T00:00:00Z', status: 'Pendente' };
+    vi.mocked(http.get).mockResolvedValueOnce(pix).mockResolvedValueOnce({ ...pix, status: 'Confirmado' })
+      .mockResolvedValueOnce({ ...pix, pagamentoId: pagamento.servicoId });
+    await expect(api.getPix!(pagamento.id)).resolves.toMatchObject({ pixCopiaECola: 'codigo-teste' });
+    await expect(api.getPix!(pagamento.id)).resolves.toMatchObject({ pixCopiaECola: null });
+    await expect(api.getPix!(pagamento.id)).rejects.toThrow('Resposta de pagamento inválida.');
+  });
 });

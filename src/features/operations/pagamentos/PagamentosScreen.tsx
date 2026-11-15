@@ -6,7 +6,7 @@ import type { OperationsSession } from '@/src/shared/contracts/session';
 import { HttpProblemError } from '@/src/shared/contracts/http';
 import { PixChargeCard } from './PixChargeCard';
 import { paymentTrackingStore, type TrackedPixCharge } from './paymentTrackingStore';
-import { isPixExpired, isPagamentoTerminal, paymentStatusLabel, shouldPollPagamento } from './paymentPresentation';
+import { isPixExpired, isPagamentoTerminal, paymentStatusLabel, shouldPollPagamento, transactionLabel } from './paymentPresentation';
 
 interface Props {
   readonly api: PagamentosApi;
@@ -80,6 +80,14 @@ export function PagamentosScreen({ api, session, initialPagamentoId }: Props) {
           await paymentTrackingStore.removePixCode(session.userId, selectedId);
           if (!disposed) setTracked((items) => items.map((item) => item.pagamentoId === selectedId ? { ...item, pixCopiaECola: null } : item));
         }
+        if (api.getPix && next.origem === 'AsaasSandbox' && session.roles.includes('Cliente') &&
+            !currentTracked?.pixCopiaECola && next.status === 'Pendente') {
+          const pix = await api.getPix(selectedId);
+          if (!disposed && pix.pixCopiaECola && !isPixExpired(pix.expiraEm)) {
+            const item = { ...pix, pagamentoId: selectedId, servicoId: next.servicoId };
+            setTracked((items) => [item, ...items.filter((charge) => charge.pagamentoId !== selectedId)]);
+          }
+        }
         if (shouldPollPagamento(next)) timer = setTimeout(() => void poll(), 5000);
       } catch (error) {
         if (!disposed) setMessage(friendlyError(error));
@@ -90,7 +98,7 @@ export function PagamentosScreen({ api, session, initialPagamentoId }: Props) {
 
     void poll();
     return () => { disposed = true; if (timer) clearTimeout(timer); };
-  }, [api, foreground, retryToken, selectedId, session.userId, trackedById]);
+  }, [api, foreground, retryToken, selectedId, session.roles, session.userId, trackedById]);
 
   const refresh = () => setRetryToken((value) => value + 1);
   if (selectedId) return <ScrollView contentContainerStyle={styles.container}>

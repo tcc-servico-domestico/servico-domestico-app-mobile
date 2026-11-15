@@ -5,6 +5,9 @@ import {
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 
+import { AvaliacaoDoServico } from '@/src/features/operations/avaliacoes/AvaliacaoDoServico';
+import { AvaliacoesScreen } from '@/src/features/operations/avaliacoes/AvaliacoesScreen';
+import type { AvaliacoesApi } from '@/src/features/operations/contracts/avaliacoes';
 import type { Imovel, ImoveisApi, Page } from '@/src/features/operations/contracts/imoveis';
 import type { Oferta, OfertasApi } from '@/src/features/operations/contracts/ofertas';
 import type { Checklist, ProfissionalCompativel, Servico, ServicosApi } from '@/src/features/operations/contracts/servicos';
@@ -15,16 +18,20 @@ import { paymentTrackingStore } from '@/src/features/operations/pagamentos/payme
 import { actionableChecklist, canCancel, canChooseProfessional, canComplete, canRespondToOffer, canStart, nextChecklistStatus } from './policy';
 import { allowedRadii, emptyServicoForm, toCreateServicoInput, validateServico, type ServicoFormErrors, type ServicoFormValues } from './validation';
 
+type ReviewReturn = { readonly name: 'detail' | 'matching'; readonly servico: Servico };
+
 type Screen =
   | { readonly name: 'list' }
-  | { readonly name: 'detail'; readonly servico: Servico }
+  | ReviewReturn
   | { readonly name: 'create' }
-  | { readonly name: 'matching'; readonly servico: Servico };
+  | { readonly name: 'avaliacoes'; readonly retorno: ReviewReturn; readonly profissionalId: string; readonly nomeExibicao?: string }
+  | { readonly name: 'resumoAvaliacoes' };
 
 interface Props {
   readonly servicosApi: ServicosApi;
   readonly ofertasApi: OfertasApi;
   readonly imoveisApi: ImoveisApi;
+  readonly avaliacoesApi: AvaliacoesApi;
   readonly session: OperationsSession;
 }
 
@@ -46,7 +53,7 @@ function updateCollection(items: readonly Servico[], updated: Servico): readonly
   return index < 0 ? [updated, ...items] : items.map((item) => item.id === updated.id ? updated : item);
 }
 
-export function ServicosScreen({ servicosApi, ofertasApi, imoveisApi, session }: Props) {
+export function ServicosScreen({ servicosApi, ofertasApi, imoveisApi, avaliacoesApi, session }: Props) {
   const router = useRouter();
   const [screen, setScreen] = useState<Screen>({ name: 'list' });
   const [servicos, setServicos] = useState<readonly Servico[]>([]);
@@ -164,11 +171,30 @@ export function ServicosScreen({ servicosApi, ofertasApi, imoveisApi, session }:
   }, [load, ofertasApi]);
 
   if (screen.name === 'create') return <ServicoForm api={imoveisApi} pending={mutating} onBack={() => setScreen({ name: 'list' })} onSave={saveServico} />;
-  if (screen.name === 'matching') return <MatchingScreen servico={screen.servico} api={servicosApi} pending={mutating} onBack={() => setScreen({ name: 'detail', servico: screen.servico })} onSelect={selectProfessional} />;
+
+  if (screen.name === 'avaliacoes') return <AvaliacoesScreen key={screen.profissionalId}
+    api={avaliacoesApi} profissionalId={screen.profissionalId} nomeExibicao={screen.nomeExibicao}
+    onBack={() => setScreen(screen.retorno)} />;
+  if (screen.name === 'resumoAvaliacoes') return <AvaliacoesScreen api={avaliacoesApi} onBack={() => setScreen({ name: 'list' })} />;
+  if (screen.name === 'matching') return <MatchingScreen servico={screen.servico} api={servicosApi}
+    userId={session.userId} pending={mutating} onBack={() => setScreen({ name: 'detail', servico: screen.servico })}
+    onSelect={selectProfessional} onReviews={(item) => setScreen({
+      name: 'avaliacoes', retorno: screen, profissionalId: item.profissionalId, nomeExibicao: item.nomeExibicao,
+    })} />;
+
   if (screen.name === 'detail') return <ServicoDetail
     servico={screen.servico} roles={session.roles} pending={mutating} message={message}
     onBack={() => { setScreen({ name: 'list' }); }}
     onReload={() => void refreshDetail(screen.servico.id)}
+    reviews={isClient && screen.servico.status === 'Concluido' && screen.servico.profissionalId &&
+        screen.servico.profissionalId !== session.userId ? <>
+      <AvaliacaoDoServico key={screen.servico.id} api={avaliacoesApi} servicoId={screen.servico.id} />
+      <Button title="Consultar avaliações do profissional" onPress={() => {
+        if (screen.servico.profissionalId) setScreen({
+          name: 'avaliacoes', retorno: screen, profissionalId: screen.servico.profissionalId,
+        });
+      }} />
+    </> : null}
     onChoose={() => setScreen({ name: 'matching', servico: screen.servico })}
     onCancel={(motivo) => operate((current, key) => servicosApi.cancel(current.id, motivo, current.aggregateVersion, key), screen.servico)}
     onStart={() => operate((current, key) => servicosApi.start(current.id, current.aggregateVersion, key), screen.servico)}
@@ -190,6 +216,7 @@ export function ServicosScreen({ servicosApi, ofertasApi, imoveisApi, session }:
       <Text style={styles.title}>Serviços</Text>
       {isClient ? <Button title="Novo serviço" onPress={() => setScreen({ name: 'create' })} /> : null}
     </View>
+    {isProfessional ? <Button title="Minhas avaliações" onPress={() => setScreen({ name: 'resumoAvaliacoes' })} /> : null}
     {message ? <ErrorPanel message={message} onRetry={() => void load()} /> : null}
     {loading && servicos.length === 0 ? <Center label="Carregando serviços" /> : null}
     {!loading && !message && servicos.length === 0 ? <Text style={styles.empty}>Nenhum serviço visível para este perfil.</Text> : null}
@@ -250,19 +277,27 @@ function ServicoForm({ api, pending, onBack, onSave }: { readonly api: ImoveisAp
   </ScrollView>;
 }
 
-function MatchingScreen({ servico, api, pending, onBack, onSelect }: { readonly servico: Servico; readonly api: ServicosApi; readonly pending: boolean; readonly onBack: () => void; readonly onSelect: (servico: Servico, profissionalId: string) => Promise<void> }) {
+function MatchingScreen({ servico, api, userId, pending, onBack, onSelect, onReviews }: {
+  readonly servico: Servico; readonly api: ServicosApi; readonly userId: string; readonly pending: boolean;
+  readonly onBack: () => void;
+  readonly onSelect: (servico: Servico, profissionalId: string) => Promise<void>;
+  readonly onReviews: (profissional: ProfissionalCompativel) => void;
+}) {
   const [items, setItems] = useState<readonly ProfissionalCompativel[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null);
   const load = useCallback(() => { setLoading(true); setError(null); return api.listCompatibleProfessionals(servico.id, { page: 1, pageSize: 20 }).then((response) => setItems(response.items)).catch((cause: unknown) => setError(friendlyError(cause))).finally(() => setLoading(false)); }, [api, servico.id]);
   useEffect(() => { void load(); }, [load]);
-  return <View style={styles.container}><Button title="Voltar" onPress={onBack} disabled={pending} /><Text style={styles.title}>Profissionais compatíveis</Text>{loading ? <Center label="Carregando profissionais" /> : null}{error ? <ErrorPanel message={error} onRetry={() => void load()} /> : null}{!loading && !error && items.length === 0 ? <Text style={styles.empty}>Não há profissional compatível para o raio e horário escolhidos.</Text> : null}<FlatList data={items} keyExtractor={(item) => item.profissionalId} renderItem={({ item }) => <View style={styles.card}><Text style={styles.cardTitle}>{item.nomeExibicao ?? 'Profissional compatível'}</Text><Text>#{item.posicaoRanking} · {item.avaliacaoMedia.toFixed(1)} ({item.quantidadeAvaliacoes} avaliações) · {item.distanciaKm.toFixed(1)} km</Text><Button title="Selecionar" disabled={pending} onPress={() => void onSelect(servico, item.profissionalId)} /></View>} /></View>;
+  return <View style={styles.container}><Button title="Voltar" onPress={onBack} disabled={pending} /><Text style={styles.title}>Profissionais compatíveis</Text>{loading ? <Center label="Carregando profissionais" /> : null}{error ? <ErrorPanel message={error} onRetry={() => void load()} /> : null}{!loading && !error && items.length === 0 ? <Text style={styles.empty}>Não há profissional compatível para o raio e horário escolhidos.</Text> : null}<FlatList data={items} keyExtractor={(item) => item.profissionalId} renderItem={({ item }) => <View style={styles.card}><Text style={styles.cardTitle}>{item.nomeExibicao ?? 'Profissional compatível'}</Text><Text>#{item.posicaoRanking} · {item.avaliacaoMedia.toFixed(1)} ({item.quantidadeAvaliacoes} avaliações) · {item.distanciaKm.toFixed(1)} km</Text>{item.profissionalId !== userId
+      ? <Button title="Ver avaliações" disabled={pending} onPress={() => onReviews(item)} /> : null}
+    <Button title="Selecionar" disabled={pending} onPress={() => void onSelect(servico, item.profissionalId)} /></View>} /></View>;
 }
 
-function ServicoDetail({ servico, roles, pending, message, onBack, onReload, onChoose, onCancel, onStart, onChecklist, onComplete }: { readonly servico: Servico; readonly roles: OperationsSession['roles']; readonly pending: boolean; readonly message: string | null; readonly onBack: () => void; readonly onReload: () => void; readonly onChoose: () => void; readonly onCancel: (motivo: string) => void; readonly onStart: () => void; readonly onChecklist: (checklist: Checklist, status: NonNullable<ReturnType<typeof nextChecklistStatus>>) => Promise<void>; readonly onComplete: () => void }) {
+function ServicoDetail({ servico, roles, pending, message, reviews, onBack, onReload, onChoose, onCancel, onStart, onChecklist, onComplete }: { readonly servico: Servico; readonly roles: OperationsSession['roles']; readonly pending: boolean; readonly message: string | null; readonly reviews: React.ReactNode; readonly onBack: () => void; readonly onReload: () => void; readonly onChoose: () => void; readonly onCancel: (motivo: string) => void; readonly onStart: () => void; readonly onChecklist: (checklist: Checklist, status: NonNullable<ReturnType<typeof nextChecklistStatus>>) => Promise<void>; readonly onComplete: () => void }) {
   const [showCancel, setShowCancel] = useState(false); const [motivo, setMotivo] = useState('');
   const next = actionableChecklist(servico); const nextStatus = next ? nextChecklistStatus(next) : null;
   return <ScrollView contentContainerStyle={styles.container}><Button title="Voltar" onPress={onBack} disabled={pending} /><Text style={styles.title}>Detalhe do serviço</Text>{message ? <Text accessibilityRole="alert" style={styles.errorText}>{message}</Text> : null}<Text>Status: {servico.status}</Text><Text>Imóvel vinculado: {servico.imovelId}</Text><Text>Início: {formatDate(servico.inicioPrevisto)}</Text><Text>Fim: {formatDate(servico.fimPrevisto)}</Text><Text>Valor: {money(servico.valor)}</Text><Text>Raio: {servico.raioBuscaKm} km</Text>{servico.profissionalId ? <Text>Profissional selecionado.</Text> : null}
     <Text style={styles.label}>Checklists</Text>{[...servico.checklists].sort((a, b) => a.ordem - b.ordem).map((item) => <View key={item.id} style={styles.checklist}><Text>{item.ordem}. {item.descricao} — {item.status}</Text>{next?.id === item.id && nextStatus && servico.status === 'EmExecucao' ? <Button title={`Marcar como ${nextStatus}`} disabled={pending} onPress={() => void onChecklist(item, nextStatus)} /> : null}</View>)}
     {canChooseProfessional(roles, servico.status) ? <Button title="Escolher profissional" disabled={pending} onPress={onChoose} /> : null}{canCancel(roles, servico.status) ? <Button title="Cancelar serviço" color="#a00" disabled={pending} onPress={() => setShowCancel(true)} /> : null}{canStart(roles, servico.status) ? <Button title="Iniciar serviço" disabled={pending} onPress={onStart} /> : null}{canComplete(roles, servico) ? <Button title="Concluir serviço" disabled={pending} onPress={onComplete} /> : null}<Button title="Atualizar serviço" disabled={pending} onPress={onReload} />
+    {reviews}
     <Modal transparent visible={showCancel} animationType="fade" onRequestClose={() => setShowCancel(false)}><View style={styles.modalOverlay}><View style={styles.modalCard}><Text style={styles.modalTitle}>Cancelar serviço?</Text><Field label="Motivo" value={motivo} onChangeText={setMotivo} required /><View style={styles.inline}><Button title="Voltar" onPress={() => setShowCancel(false)} disabled={pending} /><Button title="Confirmar cancelamento" color="#a00" disabled={pending || motivo.trim().length < 1 || motivo.trim().length > 300} onPress={() => { setShowCancel(false); onCancel(motivo.trim()); }} /></View></View></View></Modal>
   </ScrollView>;
 }

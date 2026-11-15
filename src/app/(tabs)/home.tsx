@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'expo-router';
 
 export default function Home() {
-  const { logout } = useAuth();
+  const { logout, session } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -15,6 +15,9 @@ export default function Home() {
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <Text>Bem-vindo ao app autenticado!</Text>
       <Button title="Minha conta" onPress={() => router.push('../perfil')} />
+      {session?.roles.includes('Profissional') && (
+        <Button title="Perfil profissional" onPress={() => router.push('/perfil-profissional')} />
+      )}
       <Button title="Sair" onPress={handleLogout} />
     </View>
   );

@@ -13,7 +13,7 @@ export default function RootLayout() {
 }
 
 function RootNavigation() {
-  const { status } = useAuth();
+  const { status, session } = useAuth();
 
   useEffect(() => {
     if (status !== 'loading') void SplashScreen.hideAsync();
@@ -27,6 +27,9 @@ function RootNavigation() {
       <Stack.Protected guard={status === 'authenticated'}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="perfil" options={{ headerShown: true, title: 'Minha conta' }} />
+      </Stack.Protected>
+      <Stack.Protected guard={status === 'authenticated' && session?.roles.includes('Profissional') === true}>
+        <Stack.Screen name="perfil-profissional" options={{ headerShown: true, title: 'Perfil profissional' }} />
       </Stack.Protected>
       <Stack.Protected guard={status === 'anonymous'}>
         <Stack.Screen name="(auth)" />

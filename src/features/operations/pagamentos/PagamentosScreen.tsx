@@ -6,7 +6,7 @@ import type { OperationsSession } from '@/src/shared/contracts/session';
 import { HttpProblemError } from '@/src/shared/contracts/http';
 import { PixChargeCard } from './PixChargeCard';
 import { paymentTrackingStore, type TrackedPixCharge } from './paymentTrackingStore';
-import { isPixExpired, isPagamentoTerminal, paymentStatusLabel, shouldPollPagamento, transactionLabel } from './paymentPresentation';
+import { isPixExpired, isPagamentoTerminal, paymentStatusLabel, shouldPollPagamento } from './paymentPresentation';
 
 interface Props {
   readonly api: PagamentosApi;
@@ -76,19 +76,11 @@ export function PagamentosScreen({ api, session, initialPagamentoId }: Props) {
         setPayments((items) => updateCollection(items, next));
         setMessage(null);
         const currentTracked = trackedById.get(selectedId);
-        if (currentTracked?.pixCopiaECola && (isPixExpired(currentTracked.expiraEm) || isPagamentoTerminal(next))) {
+        if (currentTracked && (isPixExpired(currentTracked.expiraEm) || isPagamentoTerminal(next))) {
           await paymentTrackingStore.removePixCode(session.userId, selectedId);
           if (!disposed) setTracked((items) => items.map((item) => item.pagamentoId === selectedId ? { ...item, pixCopiaECola: null } : item));
         }
-        if (api.getPix && next.origem === 'AsaasSandbox' && session.roles.includes('Cliente') &&
-            !currentTracked?.pixCopiaECola && next.status === 'Pendente') {
-          const pix = await api.getPix(selectedId);
-          if (!disposed && pix.pixCopiaECola && !isPixExpired(pix.expiraEm)) {
-            const item = { ...pix, pagamentoId: selectedId, servicoId: next.servicoId };
-            setTracked((items) => [item, ...items.filter((charge) => charge.pagamentoId !== selectedId)]);
-          }
-        }
-        if (shouldPollPagamento(next)) timer = setTimeout(() => void poll(), 5000);
+        if (shouldPollPagamento(next, currentTracked?.expiraEm)) timer = setTimeout(() => void poll(), 5000);
       } catch (error) {
         if (!disposed) setMessage(friendlyError(error));
       } finally {
@@ -98,7 +90,7 @@ export function PagamentosScreen({ api, session, initialPagamentoId }: Props) {
 
     void poll();
     return () => { disposed = true; if (timer) clearTimeout(timer); };
-  }, [api, foreground, retryToken, selectedId, session.roles, session.userId, trackedById]);
+  }, [api, foreground, retryToken, selectedId, session.userId, trackedById]);
 
   const refresh = () => setRetryToken((value) => value + 1);
   if (selectedId) return <ScrollView contentContainerStyle={styles.container}>
@@ -129,7 +121,7 @@ export function PagamentosScreen({ api, session, initialPagamentoId }: Props) {
 }
 
 function TransactionHistory({ pagamento }: { readonly pagamento: Pagamento }) {
-  return <View style={styles.history}><Text accessibilityRole="header" style={styles.subtitle}>Histórico</Text>{pagamento.transacoes.length === 0 ? <Text>Nenhuma movimentação disponível.</Text> : [...pagamento.transacoes].sort((a, b) => (a.observadoEm ?? a.occurredAt ?? '').localeCompare(b.observadoEm ?? b.occurredAt ?? '')).map((item) => <View key={item.id}><Text>{transactionLabel(item)}</Text>{item.motivo ? <Text>{item.motivo}</Text> : null}</View>)}</View>;
+  return <View style={styles.history}><Text style={styles.subtitle}>Histórico</Text>{[...pagamento.transacoes].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt)).map((item) => <View key={item.id}><Text>{item.operacao}: {item.status}</Text>{item.motivo ? <Text>{item.motivo}</Text> : null}</View>)}</View>;
 }
 
 function ErrorPanel({ message, onRetry }: { readonly message: string; readonly onRetry: () => void }) {

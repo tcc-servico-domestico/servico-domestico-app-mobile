@@ -1,5 +1,4 @@
 import * as SecureStore from 'expo-secure-store';
-import { isPixExpired } from './paymentPresentation';
 
 export interface TrackedPixCharge {
   readonly pagamentoId: string;
@@ -11,23 +10,6 @@ export interface TrackedPixCharge {
 const keyFor = (userId: string) => `servico-domestico.payment-tracking.v1.${userId}`;
 const supportsSecureStore = typeof window === 'undefined';
 const volatileCharges = new Map<string, readonly TrackedPixCharge[]>();
-const pendingOperations = new Map<string, Promise<void>>();
-
-function serialize<T>(userId: string, operation: () => Promise<T>): Promise<T> {
-  const result = (pendingOperations.get(userId) ?? Promise.resolve()).then(operation);
-  const completion = result.then(() => undefined, () => undefined);
-  pendingOperations.set(userId, completion);
-  void completion.then(() => {
-    if (pendingOperations.get(userId) === completion) pendingOperations.delete(userId);
-  });
-  return result;
-}
-
-function withoutExpiredCode(charge: TrackedPixCharge): TrackedPixCharge {
-  return charge.pixCopiaECola && isPixExpired(charge.expiraEm)
-    ? { ...charge, pixCopiaECola: null }
-    : charge;
-}
 
 function isTrackedCharge(value: unknown): value is TrackedPixCharge {
   if (!value || typeof value !== 'object') return false;
@@ -42,10 +24,7 @@ async function read(userId: string): Promise<readonly TrackedPixCharge[]> {
   if (serialized) {
     try { source = JSON.parse(serialized); } catch { source = []; }
   }
-  const charges = Array.isArray(source) ? source.filter(isTrackedCharge) : [];
-  const sanitized = charges.map(withoutExpiredCode);
-  if (sanitized.some((charge, index) => charge !== charges[index])) await write(userId, sanitized);
-  return sanitized;
+  return Array.isArray(source) ? source.filter(isTrackedCharge) : [];
 }
 
 async function write(userId: string, charges: readonly TrackedPixCharge[]) {
@@ -54,17 +33,17 @@ async function write(userId: string, charges: readonly TrackedPixCharge[]) {
 }
 
 export const paymentTrackingStore = {
-  load: (userId: string) => serialize(userId, () => read(userId)),
-  save: (userId: string, charge: TrackedPixCharge) => serialize(userId, async () => {
+  load: read,
+  async save(userId: string, charge: TrackedPixCharge) {
     const current = await read(userId);
-    await write(userId, [withoutExpiredCode(charge), ...current.filter((item) => item.pagamentoId !== charge.pagamentoId)]);
-  }),
-  removePixCode: (userId: string, pagamentoId: string) => serialize(userId, async () => {
+    await write(userId, [charge, ...current.filter((item) => item.pagamentoId !== charge.pagamentoId)]);
+  },
+  async removePixCode(userId: string, pagamentoId: string) {
     const current = await read(userId);
     await write(userId, current.map((item) => item.pagamentoId === pagamentoId ? { ...item, pixCopiaECola: null } : item));
-  }),
-  clear: (userId: string) => serialize(userId, async () => {
+  },
+  async clear(userId: string) {
     volatileCharges.delete(userId);
     if (supportsSecureStore) await SecureStore.deleteItemAsync(keyFor(userId));
-  }),
+  },
 };

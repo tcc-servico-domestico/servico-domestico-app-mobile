@@ -8,11 +8,11 @@ const commandHeaders = (expectedVersion: number, idempotencyKey: string) => ({
   'Idempotency-Key': idempotencyKey,
 });
 
-export function createServicosApi(http: OperationsHttpClient, asaasSandbox = false): ServicosApi {
+export function createServicosApi(http: OperationsHttpClient): ServicosApi {
   return {
     list: (input = {}) => http.get(resourcePath, { query: input }),
     get: (servicoId) => http.get(`${resourcePath}/${servicoId}`),
-    create: (input: CreateServicoInput, idempotencyKey: string) => http.post<CriacaoServico>(asaasSandbox ? '/api/v2/servicos' : resourcePath, input, {
+    create: (input: CreateServicoInput, idempotencyKey: string) => http.post<CriacaoServico>(resourcePath, input, {
       headers: { 'Idempotency-Key': idempotencyKey },
     }),
     listCompatibleProfessionals: (servicoId, input = {}) => http.get(`${resourcePath}/${servicoId}/profissionais`, { query: input }),

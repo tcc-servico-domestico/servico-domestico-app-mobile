@@ -1,7 +1,5 @@
 export interface AppEnvironment {
   readonly deployment: 'development' | 'homologacao' | 'production';
-  readonly asaasSandbox: boolean;
-  readonly consultarPixAsaas: boolean;
   readonly apiBaseUrl: string;
   readonly authApiBaseUrl: string;
   readonly paymentApiBaseUrl: string;
@@ -50,21 +48,11 @@ export function readEnvironment(
     EXPO_PUBLIC_AUTH_API_BASE_URL: process.env.EXPO_PUBLIC_AUTH_API_BASE_URL,
     EXPO_PUBLIC_PAYMENT_API_BASE_URL: process.env.EXPO_PUBLIC_PAYMENT_API_BASE_URL,
     EXPO_PUBLIC_MOBILE_CONFIRMATION_BASE_URL: process.env.EXPO_PUBLIC_MOBILE_CONFIRMATION_BASE_URL,
-    EXPO_PUBLIC_ASAAS_SANDBOX: process.env.EXPO_PUBLIC_ASAAS_SANDBOX,
-    EXPO_PUBLIC_ASAAS_CONSULTA: process.env.EXPO_PUBLIC_ASAAS_CONSULTA,
   },
 ): AppEnvironment {
   const deployment = readDeployment(source.EXPO_PUBLIC_APP_ENV);
-  const asaas = source.EXPO_PUBLIC_ASAAS_SANDBOX;
-  const consulta = source.EXPO_PUBLIC_ASAAS_CONSULTA;
-  if ([asaas, consulta].some((value) => value && value !== 'true' && value !== 'false'))
-    throw new Error('As configurações do Asaas devem ser true ou false.');
-  if ((asaas === 'true' || consulta === 'true') && deployment !== 'homologacao')
-    throw new Error('Asaas Sandbox exige ambiente de homologação.');
   return {
     deployment,
-    asaasSandbox: asaas === 'true',
-    consultarPixAsaas: asaas === 'true' || consulta === 'true',
     apiBaseUrl: publicApiUrl(source, 'EXPO_PUBLIC_API_BASE_URL', deployment),
     authApiBaseUrl: publicApiUrl(source, 'EXPO_PUBLIC_AUTH_API_BASE_URL', deployment),
     paymentApiBaseUrl: publicApiUrl(source, 'EXPO_PUBLIC_PAYMENT_API_BASE_URL', deployment),

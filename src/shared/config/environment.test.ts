@@ -12,8 +12,6 @@ describe('readEnvironment', () => {
       EXPO_PUBLIC_MOBILE_CONFIRMATION_BASE_URL: 'servicodomestico://confirmar-email',
     })).toEqual({
       deployment: 'homologacao',
-      asaasSandbox: false,
-      consultarPixAsaas: false,
       authApiBaseUrl: 'https://auth.example.test',
       apiBaseUrl: 'https://api.example.test',
       paymentApiBaseUrl: 'https://payment.example.test',

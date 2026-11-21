@@ -2,13 +2,17 @@ import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, ScrollView, Alert } from 'react-native';
 import { TextInput, Button, Checkbox, HelperText } from 'react-native-paper';
 import { useRouter } from 'expo-router';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { usePrototypeFonts } from '@/src/context/TypographyContext';
 import { useAuth } from '@/src/context/AuthContext';
 import { HttpProblemError } from '@/src/shared/contracts/http';
 import { identityFieldErrors, loginErrorMessage, validateIdentityForm, type IdentityFieldErrors } from '@/src/features/identity/formValidation';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, sessionNotice } = useAuth();
+  const customFonts = usePrototypeFonts();
+  const [mostrarSenha, setMostrarSenha] = useState(false);
 
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -24,6 +28,9 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (submitting) return;
+    setEmailTouched(true);
+    setSenhaTouched(true);
+    if (!validateIdentityForm(email, senha, 'login', { email: true, password: true }).canSubmit) return;
     setSubmitting(true);
     setError(null);
     setFieldErrors({});
@@ -48,19 +55,30 @@ export default function LoginScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Text accessibilityRole="header" style={styles.title}>Faça seu login</Text>
-      <Text>Informe seu e-mail e senha para acessar sua conta. Todos os campos são obrigatórios.</Text>
+      <View style={styles.brand} accessibilityLabel="Serviço Doméstico">
+        <View style={styles.brandIcon}><MaterialCommunityIcons name="home-outline" size={25} color="#FFFFFF" /></View>
+        <Text style={[styles.brandText, customFonts && { fontFamily: 'BricolageBold' }]}>Serviço{'\n'}Doméstico</Text>
+      </View>
+      <Text accessibilityRole="header" style={[styles.title, customFonts && { fontFamily: 'BricolageExtraBold' }]}>Entrar</Text>
+      {sessionNotice ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.sessionNotice}>{sessionNotice}</Text> : null}
+      {error ? <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.errorNotice}>
+        <MaterialCommunityIcons name="alert-circle-outline" size={22} color="#A3262E" />
+        <Text style={styles.errorText}>{error}</Text>
+      </View> : null}
+      <Text style={styles.description}>Informe seu e-mail e senha para acessar sua conta. Todos os campos são obrigatórios.</Text>
+      <Text style={styles.fieldLabel}>E-mail *</Text>
 
       <TextInput
-        label="E-mail *"
         value={email}
         onChangeText={(value) => { setEmail(value); setFieldErrors((current) => ({ ...current, email: undefined })); setError(null); }}
         onBlur={() => setEmailTouched(true)}
         style={styles.input}
-        mode="flat"
-        underlineColor="transparent"
+        mode="outlined"
+        outlineStyle={styles.inputOutline}
+        outlineColor="#AEB7AA"
+        activeOutlineColor="#005B44"
         placeholder="Email"
-        placeholderTextColor="#ccc"
+        placeholderTextColor="#465550"
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
@@ -70,17 +88,20 @@ export default function LoginScreen() {
       />
       {emailError ? <HelperText type="error" accessibilityLiveRegion="polite">{emailError}</HelperText> : null}
 
+      <Text style={styles.fieldLabel}>Senha *</Text>
       <TextInput
-        label="Senha *"
         value={senha}
         onChangeText={(value) => { setSenha(value); setFieldErrors((current) => ({ ...current, password: undefined })); setError(null); }}
         onBlur={() => setSenhaTouched(true)}
         style={styles.input}
-        mode="flat"
-        underlineColor="transparent"
-        secureTextEntry
+        mode="outlined"
+        outlineStyle={styles.inputOutline}
+        outlineColor="#AEB7AA"
+        activeOutlineColor="#005B44"
+        secureTextEntry={!mostrarSenha}
+        right={<TextInput.Icon icon={mostrarSenha ? 'eye-off-outline' : 'eye-outline'} onPress={() => setMostrarSenha((visible) => !visible)} accessibilityLabel={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'} forceTextInputFocus={false} />}
         placeholder="Senha"
-        placeholderTextColor="#ccc"
+        placeholderTextColor="#465550"
         autoComplete="current-password"
         accessibilityLabel="Senha"
         accessibilityHint={senhaError ?? 'Campo obrigatório.'}
@@ -111,23 +132,24 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View>
 
-      {error ? <HelperText type="error" accessibilityLiveRegion="polite">{error}</HelperText> : null}
-
       <Button
         mode="contained"
         onPress={handleLogin}
         style={styles.loginButton}
-        contentStyle={{ minHeight: 50 }}
+        contentStyle={{ minHeight: 56 }}
+        buttonColor="#005B44"
+        theme={{ colors: { surfaceDisabled: '#B8D9CA', onSurfaceDisabled: '#163C2E' } }}
+        icon="login"
         loading={submitting}
-        disabled={submitting || !validation.canSubmit}
-        accessibilityLabel="Entrar"
-        accessibilityState={{ disabled: submitting || !validation.canSubmit, busy: submitting }}
+        disabled={submitting}
+        accessibilityLabel={submitting ? 'Entrando' : 'Entrar'}
+        accessibilityState={{ disabled: submitting, busy: submitting }}
       >
-        Entrar
+        {submitting ? 'Entrando…' : 'Entrar'}
       </Button>
 
       <TouchableOpacity style={styles.linkTarget} onPress={handleCadastro} accessibilityRole="button" accessibilityLabel="Criar uma conta">
-        <Text style={styles.cadastroText}>Não tenho conta</Text>
+        <Text style={styles.cadastroText}>Ainda não tem conta? <Text style={styles.cadastroLink}>Criar conta</Text></Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -136,22 +158,30 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     padding: 20,
     paddingBottom: 32,
-    gap: 8,
-    backgroundColor: '#fff',
+    gap: 6,
+    backgroundColor: '#F8F4EB',
   },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 22 },
+  brandIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#005B44', alignItems: 'center', justifyContent: 'center' },
+  brandText: { fontSize: 16, lineHeight: 19, color: '#10251D', fontWeight: 'bold' },
+  description: { color: '#40534B', marginBottom: 12 },
+  sessionNotice: { color: '#614900', backgroundColor: '#FFF1CF', borderRadius: 12, padding: 12 },
+  errorNotice: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderWidth: 1, borderColor: '#E9B8B4', borderRadius: 16, backgroundColor: '#FFF0EE' },
+  errorText: { flex: 1, color: '#8D2025', fontSize: 15, lineHeight: 22 },
+  fieldLabel: { color: '#10251D', fontSize: 15, fontWeight: 'bold', marginTop: 8 },
+  inputOutline: { borderRadius: 18, borderWidth: 1.5 },
   title: {
-    fontSize: 24,
+    fontSize: 28,
+    color: '#1B2421',
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 4,
   },
   input: {
-    backgroundColor: '#f9f8f6',
-    borderRadius: 25,
-    marginBottom: 15,
-    paddingHorizontal: 10,
+    backgroundColor: '#FFFEFB',
+    marginBottom: 6,
   },
   row: {
     flexDirection: 'row',
@@ -168,19 +198,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexShrink: 1,
-    minHeight: 44,
+    minHeight: 48,
   },
   linkText: {
     color: '#175E55',
     fontSize: 14,
   },
-  linkTarget: { minHeight: 44, justifyContent: 'center' },
+  linkTarget: { minHeight: 48, justifyContent: 'center' },
   loginButton: {
-    borderRadius: 25,
+    borderRadius: 16,
     marginBottom: 20,
   },
+  cadastroLink: { color: '#005B44', fontWeight: 'bold', textDecorationLine: 'underline' },
   cadastroText: {
-    color: '#175E55',
+    color: '#10251D',
     textAlign: 'center',
     fontSize: 14,
   },

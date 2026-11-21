@@ -4,7 +4,7 @@ import type { Oferta, OfertasApi } from '@/src/features/operations/contracts/ofe
 import type { Pagamento, PagamentosApi } from '@/src/features/operations/contracts/pagamentos';
 import type { Checklist, ChecklistStatus, CreateServicoInput, CriacaoServico, ProfissionalCompativel, Servico, ServicosApi } from '@/src/features/operations/contracts/servicos';
 import type { OperationsSession, SessionStore } from '@/src/shared/contracts/session';
-import type { OperationsHttpClient } from '@/src/shared/contracts/http';
+import { HttpProblemError, type OperationsHttpClient } from '@/src/shared/contracts/http';
 
 const now = '2030-01-20T12:00:00.000Z';
 const clientSession: OperationsSession = {
@@ -54,6 +54,16 @@ export function createOfflineDemoRuntime(): OfflineDemoRuntime {
   let session: OperationsSession | null = clientSession;
   const listeners = new Set<(value: OperationsSession | null) => void>();
   let properties: Imovel[] = [syntheticProperty];
+  const propertyCreations = new Map<string, { fingerprint: string; result: Imovel }>();
+  const serviceCreations = new Map<string, { fingerprint: string; result: CriacaoServico }>();
+  const replayCreation = <T>(entries: Map<string, { fingerprint: string; result: T }>, key: string, input: unknown): T | undefined => {
+    const previous = entries.get(key);
+    if (!previous) return undefined;
+    if (previous.fingerprint !== JSON.stringify(input)) {
+      throw new HttpProblemError({ status: 409, title: 'Chave já usada com outros dados', code: 'idempotency_conflict' });
+    }
+    return clone(previous.result);
+  };
   let services: Servico[] = [{
     id: 'demo-servico-aguardando-selecao', imovelId: syntheticProperty.id, profissionalId: null, raioBuscaKm: 5,
     inicioPrevisto: '2030-01-21T14:00:00.000Z', fimPrevisto: '2030-01-21T16:00:00.000Z', ofertaExpiraEmUtc: null,
@@ -100,11 +110,15 @@ export function createOfflineDemoRuntime(): OfflineDemoRuntime {
   };
 
   const imoveisApi: ImoveisApi = {
-    list: async (input = {}) => clone(page(properties, input.page, input.pageSize)),
+    list: async (input = {}) => clone(page(properties.filter((property) => property.status === 'Ativo'), input.page, input.pageSize)),
     get: async (id) => clone(requireItem(properties, id)),
-    create: async (input: SaveImovelInput) => {
+    create: async (input: SaveImovelInput, idempotencyKey: string) => {
+      const previous = replayCreation(propertyCreations, idempotencyKey, input);
+      if (previous) return previous;
       const created: Imovel = { ...input, id: `demo-imovel-${properties.length + 1}`, status: 'Ativo', aggregateVersion: 1 };
-      properties = [created, ...properties]; return clone(created);
+      properties = [created, ...properties];
+      propertyCreations.set(idempotencyKey, { fingerprint: JSON.stringify(input), result: clone(created) });
+      return clone(created);
     },
     update: async (id, input, version) => {
       const current = requireItem(properties, id);
@@ -114,7 +128,11 @@ export function createOfflineDemoRuntime(): OfflineDemoRuntime {
     },
     deactivate: async (id, version) => {
       const current = requireItem(properties, id);
+      if (current.status !== 'Ativo') throw new HttpProblemError({ status: 404, title: 'Imóvel não encontrado' });
       if (current.aggregateVersion !== version) throw new Error('Versão sintética desatualizada. Atualize a tela.');
+      if (services.some((service) => service.imovelId === id && !['Concluido', 'Cancelado', 'Expirado'].includes(service.status))) {
+        throw new HttpProblemError({ status: 409, title: 'Imóvel com serviço ativo', detail: 'O imóvel possui serviço ativo.' });
+      }
       properties = properties.map((item) => item.id === id ? { ...item, status: 'Inativo', aggregateVersion: version + 1 } : item);
     },
   };
@@ -122,13 +140,20 @@ export function createOfflineDemoRuntime(): OfflineDemoRuntime {
   const servicosApi: ServicosApi = {
     list: async (input = {}) => clone(page(services.filter((item) => !input.status || item.status === input.status), input.page, input.pageSize)),
     get: async (id) => serviceFor(id),
-    create: async (input: CreateServicoInput): Promise<CriacaoServico> => {
+    create: async (input: CreateServicoInput, idempotencyKey: string): Promise<CriacaoServico> => {
+      const previous = replayCreation(serviceCreations, idempotencyKey, input);
+      if (previous) return previous;
+      if (!properties.some((property) => property.id === input.imovelId && property.status === 'Ativo')) {
+        throw new HttpProblemError({ status: 404, title: 'Imóvel ativo não encontrado' });
+      }
       const id = `demo-servico-${services.length + 1}`;
       const created: Servico = { id, imovelId: input.imovelId, profissionalId: null, raioBuscaKm: input.raioBuscaKm, inicioPrevisto: input.inicioPrevisto, fimPrevisto: input.fimPrevisto, ofertaExpiraEmUtc: null, versaoOferta: null, valor: input.valor, moeda: 'BRL', status: 'AguardandoPagamento', aggregateVersion: 1, checklists: input.checklists.map((item, index) => ({ ...item, id: `demo-checklist-${id}-${index + 1}`, ordem: index + 1, status: 'Pendente' })) };
       const pagamentoId = `demo-pagamento-${payments.length + 1}`;
       payments = [{ id: pagamentoId, servicoId: id, valor: input.valor, moeda: 'BRL', descricao: 'Cobrança Pix fictícia', status: 'Pendente', custodiaStatus: 'NaoIniciada', requestedAt: now, paidAt: null, createdAt: now, updatedAt: null, aggregateVersion: 1, transacoes: [{ id: `demo-transacao-${pagamentoId}`, operacao: 'CriacaoCobranca', status: 'Pendente', occurredAt: now }] }, ...payments];
       services = [created, ...services];
-      return clone({ servico: created, cobrancaPix: { pagamentoId, pixCopiaECola: 'PIX-DEMONSTRACAO-SEM-VALOR-REAL', expiraEm: '2030-01-21T12:00:00.000Z' } });
+      const result = { servico: created, cobrancaPix: { pagamentoId, pixCopiaECola: 'PIX-DEMONSTRACAO-SEM-VALOR-REAL', expiraEm: '2030-01-21T12:00:00.000Z' } };
+      serviceCreations.set(idempotencyKey, { fingerprint: JSON.stringify(input), result: clone(result) });
+      return clone(result);
     },
     listCompatibleProfessionals: async (_id, input = {}) => clone(page([compatibleProfessional], input.page, input.pageSize)),
     selectProfessional: async (id, professionalId, version) => {

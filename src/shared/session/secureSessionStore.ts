@@ -1,9 +1,10 @@
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 import type { OperationsSession, SessionStore } from '@/src/shared/contracts/session';
 
 const SESSION_KEY = 'servico-domestico.session.v1';
-const supportsSecureStore = typeof window === 'undefined';
+const supportsSecureStore = Platform.OS !== 'web';
 
 let volatileSession: OperationsSession | null = null;
 const listeners = new Set<(session: OperationsSession | null) => void>();
@@ -13,7 +14,8 @@ function publish(session: OperationsSession | null) {
 }
 
 export function isSessionExpired(session: OperationsSession, now = Date.now()): boolean {
-  return new Date(session.expiresAt).getTime() <= now;
+  const expiresAt = new Date(session.expiresAt).getTime();
+  return !Number.isFinite(expiresAt) || expiresAt <= now;
 }
 
 export const secureSessionStore: SessionStore = {

@@ -15,6 +15,7 @@ vi.mock('expo-secure-store', () => ({
   setItemAsync: nativeStore.setItemAsync,
   deleteItemAsync: nativeStore.deleteItemAsync,
 }));
+vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
 
 const session: OperationsSession = {
   status: 'authenticated',
@@ -39,6 +40,12 @@ describe('secureSessionStore', () => {
     expect(nativeStore.deleteItemAsync).toHaveBeenCalledOnce();
   });
 
+  it('does not restore a session with an invalid expiry', async () => {
+    nativeStore.value = JSON.stringify({ ...session, expiresAt: 'data-invalida' });
+    await expect(secureSessionStore.load()).resolves.toBeNull();
+    expect(nativeStore.deleteItemAsync).toHaveBeenCalledOnce();
+  });
+
   it('keeps a non-persistent session only in memory and publishes changes', async () => {
     const listener = vi.fn();
     const unsubscribe = secureSessionStore.subscribe!(listener);
@@ -49,5 +56,16 @@ describe('secureSessionStore', () => {
     expect(nativeStore.setItemAsync).not.toHaveBeenCalled();
     expect(listener).toHaveBeenCalledWith(session);
     unsubscribe();
+  });
+
+  it('persists a native session even when a window global exists', async () => {
+    vi.stubGlobal('window', {});
+    try {
+      await secureSessionStore.save(session, true);
+      expect(nativeStore.setItemAsync).toHaveBeenCalledOnce();
+      await expect(secureSessionStore.load()).resolves.toEqual(session);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

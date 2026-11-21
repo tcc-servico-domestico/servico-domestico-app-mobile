@@ -1,3 +1,5 @@
-import { ProfileScreen } from '@/src/features/identity/ProfileScreen';
+import { Redirect } from 'expo-router';
 
-export default ProfileScreen;
+export default function ProfileRoute() {
+  return <Redirect href="/(tabs)/conta" />;
+}

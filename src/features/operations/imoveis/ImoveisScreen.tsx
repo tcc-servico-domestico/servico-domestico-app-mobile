@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Button, FlatList, Modal, Pressable, RefreshControl, ScrollView,
+  ActivityIndicator, FlatList, Modal, Pressable, RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, View, useWindowDimensions,
 } from 'react-native';
+
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 import type { Imovel, ImoveisApi, SaveImovelInput } from '@/src/features/operations/contracts/imoveis';
 import type { OperationsSession } from '@/src/shared/contracts/session';
@@ -43,11 +45,6 @@ function serverErrors(error: unknown): ImovelFormErrors {
   return errors;
 }
 
-function summary(imovel: Imovel): string {
-  const { endereco } = imovel;
-  return `${endereco.logradouro}, ${endereco.numero ?? 's/n'} — ${endereco.cidade}/${endereco.uf}`;
-}
-
 export function ImoveisScreen({ api, session }: Props) {
   const canManageImoveis = session.roles.includes('Cliente');
   const { fontScale } = useWindowDimensions();
@@ -55,7 +52,7 @@ export function ImoveisScreen({ api, session }: Props) {
   const [items, setItems] = useState<readonly Imovel[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(canManageImoveis);
   const [loadingMore, setLoadingMore] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [mutating, setMutating] = useState(false);
@@ -200,22 +197,53 @@ export function ImoveisScreen({ api, session }: Props) {
         onEndReached={loadMore}
         onEndReachedThreshold={0.3}
         ListHeaderComponent={<View style={styles.listHeader}>
-          <View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>Meus imóveis</Text><Button color="#175E55" title="Adicionar" accessibilityLabel="Cadastrar imóvel" onPress={() => setScreen({ name: 'form' })} /></View>
-          <Text>Selecione um imóvel para consultar seus dados ou use Adicionar para cadastrar outro.</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Cadastrar imóvel" onPress={() => setScreen({ name: 'form' })} style={({ pressed }) => [styles.addButton, pressed && { opacity: 0.75 }]}>
+            <MaterialCommunityIcons name="plus" size={22} color="#FFFFFF" /><Text style={styles.addButtonText}>Cadastrar imóvel</Text>
+          </Pressable>
           {message ? <ErrorPanel message={message} onRetry={refresh} /> : null}
           {loading && items.length === 0 ? <View style={styles.center}><ActivityIndicator accessibilityLabel="Carregando imóveis" /></View> : null}
-          {!loading && !message && items.length === 0 ? <View style={styles.center}><Text>Nenhum imóvel cadastrado.</Text></View> : null}
+          {!loading && !message && items.length > 0 ? <Text accessibilityRole="header" style={styles.sectionTitle}>{items.every((item) => item.status === 'Ativo') ? 'Ativos' : 'Imóveis'}</Text> : null}
+          {!loading && !message && items.length === 0 && total > 0 ? <ErrorPanel message="A lista de imóveis veio incompleta. Tente novamente." onRetry={refresh} /> : null}
+          {!loading && !message && items.length === 0 && total === 0 ? <View style={styles.emptyCard}>
+            <View style={styles.emptyIcon}><MaterialCommunityIcons name="home-outline" size={28} color="#005B44" /></View>
+            <Text accessibilityRole="header" style={styles.emptyTitle}>Nenhum imóvel ainda</Text>
+            <Text style={styles.emptyText}>Cadastre o endereço onde o serviço vai acontecer.</Text>
+          </View> : null}
         </View>}
         renderItem={({ item }) => (
           <Pressable accessibilityRole="button" accessibilityLabel={`Ver imóvel ${item.descricao ?? item.endereco.logradouro}`} style={[styles.card, focusedId === item.id && styles.focused]} onFocus={() => setFocusedId(item.id)} onBlur={() => setFocusedId(null)} onPress={() => void openDetail(item.id)}>
-            <Text style={styles.cardTitle}>{item.descricao ?? 'Imóvel sem descrição'}</Text>
-            <Text>{summary(item)}</Text>
-            <Text>{item.status}</Text>
+            <View style={styles.cardIcon}><MaterialCommunityIcons name="home-outline" size={24} color="#005B44" /></View>
+            <View style={styles.cardContent}>
+              <Text style={styles.cardTitle}>{item.descricao || `${item.endereco.logradouro}, ${item.endereco.numero ?? 's/n'}`}</Text>
+              <Text style={styles.muted}>{item.endereco.bairro}, {item.endereco.cidade}/{item.endereco.uf}</Text>
+              <View style={item.status === 'Ativo' ? styles.listStatusBadge : styles.listStatusInactive}><Text style={item.status === 'Ativo' ? styles.status : styles.inactiveStatus}>{item.status}</Text></View>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={22} color="#53655C" />
           </Pressable>
         )}
         ListFooterComponent={loadingMore ? <ActivityIndicator accessibilityLabel="Carregando mais imóveis" /> : null}
     />
   );
+}
+
+function PropertyButton({ title, onPress, disabled = false, busy = false, variant = 'primary' }: {
+  readonly title: string; readonly onPress: () => void; readonly disabled?: boolean; readonly busy?: boolean;
+  readonly variant?: 'primary' | 'outline' | 'danger' | 'back';
+}) {
+  const [focused, setFocused] = useState(false);
+  return <Pressable accessibilityRole="button" accessibilityLabel={title}
+    accessibilityState={{ disabled, busy }} disabled={disabled} onPress={onPress}
+    onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+    style={({ pressed }) => [styles.propertyButton, variant === 'outline' && styles.propertyButtonOutline,
+      variant === 'danger' && styles.propertyButtonDanger, variant === 'back' && styles.propertyButtonBack,
+      focused && styles.propertyButtonFocused, (pressed || disabled) && { opacity: 0.65 }]}>
+    <Text style={[styles.propertyButtonText, variant === 'outline' && styles.propertyButtonOutlineText,
+      variant === 'danger' && styles.propertyButtonDangerText, variant === 'back' && styles.propertyButtonBackText]}>{title}</Text>
+  </Pressable>;
+}
+
+function PropertyDetailRow({ label, value }: { readonly label: string; readonly value: string }) {
+  return <View style={styles.detailRow}><Text style={styles.muted}>{label}</Text><Text style={styles.detailValue}>{value}</Text></View>;
 }
 
 function DeactivationConfirmation({ visible, pending, onCancel, onConfirm }: {
@@ -227,8 +255,8 @@ function DeactivationConfirmation({ visible, pending, onCancel, onConfirm }: {
         <Text accessibilityRole="header" style={styles.modalTitle}>Inativar imóvel?</Text>
         <Text>Imóveis com serviço ativo não podem ser inativados.</Text>
         <View style={styles.actions}>
-          <Button color="#175E55" title="Cancelar" onPress={onCancel} disabled={pending} />
-          <Button title={pending ? 'Inativando…' : 'Confirmar inativação'} color="#A3262E" onPress={onConfirm} disabled={pending} />
+          <PropertyButton variant="outline" title="Cancelar" onPress={onCancel} disabled={pending} />
+          <PropertyButton variant="danger" title={pending ? 'Inativando…' : 'Confirmar inativação'} onPress={onConfirm} disabled={pending} busy={pending} />
         </View>
       </ScrollView>
     </View>
@@ -236,7 +264,7 @@ function DeactivationConfirmation({ visible, pending, onCancel, onConfirm }: {
 }
 
 function ErrorPanel({ message, onRetry }: { readonly message: string; readonly onRetry: () => void }) {
-  return <View style={styles.error}><Text accessibilityRole="alert">{message}</Text><Button color="#175E55" title="Tentar novamente" onPress={onRetry} /></View>;
+  return <View style={styles.error}><Text accessibilityRole="alert">{message}</Text><PropertyButton variant="outline" title="Tentar novamente" onPress={onRetry} /></View>;
 }
 
 function ImovelDetail({ imovel, pending, error, actionUncertain, onBack, onEdit, onDeactivate, onReload }: {
@@ -245,14 +273,21 @@ function ImovelDetail({ imovel, pending, error, actionUncertain, onBack, onEdit,
 }) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Button color="#175E55" title="Voltar" onPress={onBack} />
-      <Text accessibilityRole="header" style={styles.title}>{imovel.descricao ?? 'Imóvel sem descrição'}</Text>
-      <Text>{summary(imovel)}</Text>
-      <Text>CEP: {imovel.endereco.cep}</Text><Text>Coordenadas: {imovel.latitude}, {imovel.longitude}</Text>
-      <Text>Metragem: {imovel.metragemQuadrada ?? 'não informada'} m²</Text><Text>Situação: {imovel.status}</Text>
+      <PropertyButton variant="back" title="‹  Voltar aos imóveis" onPress={onBack} />
+      <Text accessibilityRole="header" style={styles.title}>{imovel.descricao || `${imovel.endereco.logradouro}, ${imovel.endereco.numero ?? 's/n'}`}</Text>
+      <View style={styles.statusBadge}><Text style={styles.status}>{imovel.status}</Text></View>
+      <View style={styles.detailCard}>
+        <PropertyDetailRow label="Endereço" value={`${imovel.endereco.logradouro}, ${imovel.endereco.numero ?? 's/n'}${imovel.endereco.complemento ? ` — ${imovel.endereco.complemento}` : ''}`} />
+        <PropertyDetailRow label="Bairro" value={imovel.endereco.bairro} />
+        <PropertyDetailRow label="Cidade" value={`${imovel.endereco.cidade}/${imovel.endereco.uf}`} />
+        <PropertyDetailRow label="CEP" value={imovel.endereco.cep} />
+        <PropertyDetailRow label="Metragem" value={imovel.metragemQuadrada == null ? 'Não informada' : `${imovel.metragemQuadrada} m²`} />
+      </View>
+      <Text accessibilityRole="header" style={styles.sectionTitle}>Localização</Text>
+      <View style={styles.detailCard}><Text>Coordenadas: {imovel.latitude}, {imovel.longitude}</Text></View>
       {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
-      {actionUncertain ? <Button color="#175E55" title="Atualizar imóvel" onPress={onReload} disabled={pending} /> : null}
-      <View style={styles.actions}><Button color="#175E55" title="Editar" onPress={onEdit} disabled={pending || actionUncertain} /><Button title="Inativar" color="#A3262E" onPress={onDeactivate} disabled={pending || actionUncertain} /></View>
+      {actionUncertain ? <PropertyButton variant="outline" title="Atualizar imóvel" onPress={onReload} disabled={pending} /> : null}
+      <View style={styles.actions}><PropertyButton variant="outline" title="Editar imóvel" onPress={onEdit} disabled={pending || actionUncertain} /><PropertyButton variant="danger" title="Inativar imóvel" onPress={onDeactivate} disabled={pending || actionUncertain} /></View>
     </ScrollView>
   );
 }
@@ -315,24 +350,28 @@ function ImovelForm({ imovel, pending, attempt, setAttempt, creationDraft, setCr
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Button color="#175E55" title="Voltar" onPress={() => { if (imovel) setEditDraft(values); else setCreationDraft(values); onBack(); }} disabled={pending} />
+      <PropertyButton variant="back" title="‹  Voltar" onPress={() => { if (imovel) setEditDraft(values); else setCreationDraft(values); onBack(); }} disabled={pending} />
       <Text accessibilityRole="header" style={styles.title}>{imovel ? 'Editar imóvel' : 'Cadastrar imóvel'}</Text>
       <Text>Campos marcados com * são obrigatórios. Confira os dados antes de salvar.</Text>
       {imovel && editDraft ? <Text accessibilityRole="alert">Seu rascunho anterior foi recuperado. Compare os dados com o imóvel atualizado antes de salvar.</Text> : null}
       {!imovel && attempt ? <Text accessibilityRole="alert">Há uma criação anterior com resultado não confirmado. Os dados foram preservados para que você possa consultá-los antes de repetir.</Text> : null}
       {submitError ? <Text accessibilityRole="alert" style={styles.errorText}>{submitError}</Text> : null}
+      <Text accessibilityRole="header" style={styles.sectionTitle}>Identificação</Text>
       <Field label="Descrição" value={values.descricao} onChangeText={(value) => setValue('descricao', value)} error={errors.descricao} />
       <Field label="Metragem quadrada" value={values.metragemQuadrada} keyboardType="decimal-pad" onChangeText={(value) => setValue('metragemQuadrada', value)} error={errors.metragemQuadrada} />
-      <Field label="Latitude" value={values.latitude} keyboardType="decimal-pad" onChangeText={(value) => setValue('latitude', value)} error={errors.latitude} required />
-      <Field label="Longitude" value={values.longitude} keyboardType="decimal-pad" onChangeText={(value) => setValue('longitude', value)} error={errors.longitude} required />
+      <Text accessibilityRole="header" style={styles.sectionTitle}>Endereço</Text>
+      <Field label="CEP" value={values.cep} keyboardType="number-pad" onChangeText={(value) => setValue('cep', value)} error={errors.cep} required />
       <Field label="Logradouro" value={values.logradouro} onChangeText={(value) => setValue('logradouro', value)} error={errors.logradouro} required />
       <Field label="Número" value={values.numero} keyboardType="number-pad" onChangeText={(value) => setValue('numero', value)} error={errors.numero} />
       <Field label="Complemento" value={values.complemento} onChangeText={(value) => setValue('complemento', value)} error={errors.complemento} />
       <Field label="Bairro" value={values.bairro} onChangeText={(value) => setValue('bairro', value)} error={errors.bairro} required />
       <Field label="Cidade" value={values.cidade} onChangeText={(value) => setValue('cidade', value)} error={errors.cidade} required />
       <Field label="UF" value={values.uf} autoCapitalize="characters" maxLength={2} onChangeText={(value) => setValue('uf', value)} error={errors.uf} required />
-      <Field label="CEP" value={values.cep} keyboardType="number-pad" onChangeText={(value) => setValue('cep', value)} error={errors.cep} required />
-      <Button color="#175E55" title={pending ? 'Salvando…' : 'Salvar'} disabled={pending || editUncertain} onPress={() => void submit()} accessibilityState={{ disabled: pending || editUncertain, busy: pending }} />
+      <Text accessibilityRole="header" style={styles.sectionTitle}>Localização</Text>
+      <Text style={styles.muted}>Informe as coordenadas do imóvel.</Text>
+      <Field label="Latitude" value={values.latitude} keyboardType="decimal-pad" onChangeText={(value) => setValue('latitude', value)} error={errors.latitude} required />
+      <Field label="Longitude" value={values.longitude} keyboardType="decimal-pad" onChangeText={(value) => setValue('longitude', value)} error={errors.longitude} required />
+      <PropertyButton title={pending ? 'Salvando…' : 'Salvar'} disabled={pending || editUncertain} onPress={() => void submit()} busy={pending} />
     </ScrollView>
   );
 }
@@ -347,13 +386,37 @@ function Field({ label, error, required = false, ...props }: {
 
 const styles = StyleSheet.create({
   list: { flex: 1 }, listHeader: { gap: 12 },
-  container: { flexGrow: 1, padding: 16, gap: 12, backgroundColor: '#FAFAF7' }, center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 },
+  container: { flexGrow: 1, padding: 16, gap: 12, backgroundColor: '#F8F4EB' }, center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 },
   heading: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between', alignItems: 'center' }, title: { fontSize: 24, fontWeight: '700', color: '#1B2421' },
-  card: { borderWidth: 1, borderColor: '#6B7A74', backgroundColor: '#FFFFFF', borderRadius: 8, padding: 12, marginVertical: 6, gap: 4, minHeight: 44 }, cardTitle: { fontWeight: '700', color: '#1B2421' },
+  detailCard: { borderWidth: 1, borderColor: '#DDDAD1', backgroundColor: '#FFFDFA', borderRadius: 16, padding: 16, gap: 8 },
+  addButton: { minHeight: 56, borderRadius: 16, backgroundColor: '#005B44', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12 },
+  addButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  emptyCard: { minHeight: 212, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24, borderWidth: 1, borderStyle: 'dashed', borderColor: '#D4D1C9', borderRadius: 16, backgroundColor: '#FFFDFA' },
+  emptyIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: '#DCF1E8' },
+  emptyTitle: { color: '#10251D', fontSize: 18, fontWeight: '700', textAlign: 'center' },
+  emptyText: { color: '#465550', fontSize: 16, textAlign: 'center' },
+  card: { borderWidth: 1, borderColor: '#DDDAD1', backgroundColor: '#FFFDFA', borderRadius: 16, padding: 16, marginVertical: 6, gap: 12, minHeight: 48, flexDirection: 'row', alignItems: 'center' },
+  cardIcon: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#DCF1E8' },
+  cardContent: { flex: 1, gap: 4 }, cardTitle: { fontWeight: '700', color: '#10251D', fontSize: 16 },
+  sectionTitle: { color: '#10251D', fontSize: 18, fontWeight: '700', marginTop: 8 },
+  muted: { color: '#53655C' }, status: { color: '#005B44', fontWeight: '700' },
   focused: { borderWidth: 3, borderColor: '#175E55' },
   error: { borderColor: '#A3262E', borderWidth: 1, padding: 8, gap: 8 }, errorText: { color: '#A3262E' },
-  field: { gap: 4 }, input: { borderWidth: 1, borderColor: '#6B7A74', backgroundColor: '#FFFFFF', color: '#1B2421', borderRadius: 4, padding: 10, minHeight: 44 }, actions: { gap: 12 },
+  field: { gap: 4 }, input: { borderWidth: 1, borderColor: '#6B7A74', backgroundColor: '#FFFFFF', color: '#1B2421', borderRadius: 12, padding: 10, minHeight: 48 }, actions: { gap: 12 },
+  listStatusBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: '#DCF1E8' },
+  listStatusInactive: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: '#E6EBE8' },
+  inactiveStatus: { color: '#465550', fontWeight: '700' },
+  statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: '#DCF1E8' },
+  detailRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 6, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#DDDAD1' },
+  detailValue: { color: '#1B2421', fontWeight: '600', flexShrink: 1, textAlign: 'right' },
+  propertyButton: { minHeight: 48, borderRadius: 14, backgroundColor: '#005B44', paddingHorizontal: 16, paddingVertical: 12, justifyContent: 'center', alignItems: 'center' },
+  propertyButtonOutline: { backgroundColor: '#FFFDFA', borderWidth: 1, borderColor: '#005B44' },
+  propertyButtonDanger: { backgroundColor: '#FBE9E6', borderWidth: 1, borderColor: '#A3262E' },
+  propertyButtonBack: { alignSelf: 'flex-start', paddingHorizontal: 0, backgroundColor: 'transparent' },
+  propertyButtonFocused: { borderWidth: 3, borderColor: '#175E55' },
+  propertyButtonText: { color: '#FFFFFF', fontWeight: '700', textAlign: 'center' },
+  propertyButtonOutlineText: { color: '#005B44' }, propertyButtonDangerText: { color: '#A3262E' }, propertyButtonBackText: { color: '#005B44' },
   modalOverlay: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0, 0, 0, 0.45)' },
   modalScroll: { flexGrow: 0, maxHeight: '90%' },
-  modalCard: { gap: 16, padding: 20, borderRadius: 8, backgroundColor: '#fff' }, modalTitle: { fontSize: 20, fontWeight: '700' },
+  modalCard: { gap: 16, padding: 20, borderRadius: 16, backgroundColor: '#FFFFFF' }, modalTitle: { fontSize: 20, fontWeight: '700' },
 });

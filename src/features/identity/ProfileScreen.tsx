@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Button, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useAuth } from '@/src/context/AuthContext';
 import type { UserProfile } from '@/src/features/identity/contracts';
 import { HttpProblemError } from '@/src/shared/contracts/http';
 import { identityApi } from '@/src/shared/runtime';
+
+function AccountButton({ title, onPress, disabled, color }: { title: string; onPress: () => void; disabled?: boolean; color?: string }) {
+  const destructive = color === '#A3262E';
+  return <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled: Boolean(disabled) }} disabled={disabled} onPress={onPress}
+    style={({ pressed }) => [styles.action, destructive && styles.destructiveAction, disabled && styles.disabledAction, pressed && styles.pressedAction]}>
+    <Text style={[styles.actionText, destructive && styles.destructiveText]}>{title}</Text>
+  </Pressable>;
+}
 
 export function ProfileScreen() {
   const { session, logout } = useAuth();
@@ -88,29 +96,38 @@ export function ProfileScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text accessibilityRole="header" style={styles.title}>Minha conta</Text>
       {loading ? <ActivityIndicator accessibilityLabel="Carregando conta" /> : null}
       {error ? <>
         <Text accessibilityRole="alert" style={styles.body}>Não foi possível consultar sua conta.</Text>
-        <Button title="Tentar novamente" onPress={retry} />
+        <AccountButton title="Tentar novamente" onPress={retry} />
       </> : null}
       {profile && profile.id === userId ? <>
-        <Text style={styles.body}>E-mail: {profile.email}</Text>
-        <Text style={styles.body}>Conta: {profile.ativo ? 'Ativa' : 'Inativa'}</Text>
-        <Text style={styles.body}>E-mail: {profile.emailVerificado ? 'Confirmado' : 'Não confirmado'}</Text>
-        {profile.emailPendente ? <Text style={styles.body}>Aguardando confirmação: {profile.emailPendente}</Text> : null}
+        <View style={styles.card}>
+          <Text style={styles.label}>E-mail de acesso</Text>
+          <Text style={styles.value}>{profile.email}</Text>
+          <View style={styles.divider} />
+          <View style={styles.infoRow}><Text style={styles.label}>Verificação</Text><Text style={styles.value}>{profile.emailVerificado ? 'Confirmado' : 'Não confirmado'}</Text></View>
+          <View style={styles.infoRow}><Text style={styles.label}>Conta</Text><Text style={styles.value}>{profile.ativo ? 'Ativa' : 'Inativa'}</Text></View>
+          {session?.roles?.length ? <View style={styles.infoRow}><Text style={styles.label}>Perfis</Text><Text style={styles.value}>{session.roles.join(' e ')}</Text></View> : null}
+          {profile.emailPendente ? <Text style={styles.body}>Aguardando confirmação: {profile.emailPendente}</Text> : null}
+        </View>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>E-mail</Text>
         <Text style={styles.body}>Novo e-mail</Text>
         <TextInput accessibilityLabel="Novo e-mail" autoCapitalize="none" autoCorrect={false}
           keyboardType="email-address" value={email} onChangeText={setEmail} style={styles.input} />
-        <Button title={submitting ? 'Enviando…' : 'Solicitar alteração de e-mail'} onPress={requestChange} disabled={submitting || deleteUncertain || changeUncertain} />
-        {changeUncertain ? <Button title="Atualizar conta" onPress={retry} disabled={submitting} /> : null}
-        {!confirmDelete && !deleteUncertain ? <Button title="Excluir conta" color="#A3262E" onPress={() => setConfirmDelete(true)} disabled={submitting} /> : null}
+        <AccountButton color="#005B44" title={submitting ? 'Enviando…' : 'Solicitar alteração de e-mail'} onPress={requestChange} disabled={submitting || deleteUncertain || changeUncertain} />
+        {changeUncertain ? <AccountButton title="Atualizar conta" onPress={retry} disabled={submitting} /> : null}
+        <Text accessibilityRole="header" style={styles.sectionTitle}>Sessão</Text>
+        <AccountButton title="Sair da conta" color="#005B44" onPress={() => void logout()} disabled={submitting} />
+        <View style={styles.divider} />
+        <Text accessibilityRole="header" style={styles.sectionTitle}>Encerrar conta</Text>
+        {!confirmDelete && !deleteUncertain ? <AccountButton title="Excluir conta" color="#A3262E" onPress={() => setConfirmDelete(true)} disabled={submitting} /> : null}
         {confirmDelete ? <>
           <Text style={styles.body}>Deseja encerrar sua conta? Você perderá o acesso ao aplicativo.</Text>
-          <Button title="Confirmar exclusão" color="#A3262E" onPress={removeAccount} disabled={submitting} />
-          <Button title="Voltar" onPress={() => setConfirmDelete(false)} disabled={submitting} />
+          <AccountButton title="Confirmar exclusão" color="#A3262E" onPress={removeAccount} disabled={submitting} />
+          <AccountButton title="Voltar" onPress={() => setConfirmDelete(false)} disabled={submitting} />
         </> : null}
-        {deleteUncertain ? <Button title="Sair e tentar entrar" onPress={() => void logout()} /> : null}
+        {deleteUncertain ? <AccountButton title="Sair e tentar entrar" onPress={() => void logout()} /> : null}
         {message ? <Text accessibilityLiveRegion="polite" style={styles.body}>{message}</Text> : null}
       </> : null}
     </ScrollView>
@@ -118,8 +135,19 @@ export function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 16, gap: 16, backgroundColor: '#FAFAF7' },
-  title: { fontSize: 24, fontWeight: '700', color: '#1B2421' },
+  container: { flexGrow: 1, padding: 16, gap: 16, backgroundColor: '#F8F4EB' },
+  card: { padding: 16, borderWidth: 1, borderColor: '#DDDAD1', borderRadius: 16, backgroundColor: '#FFFDFA', gap: 8 },
+  label: { color: '#53655C', fontSize: 14, flexShrink: 1 },
+  value: { color: '#10251D', fontSize: 16, fontWeight: '700', flexShrink: 1 },
+  infoRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
+  divider: { height: 1, backgroundColor: '#E2E0D8' },
+  sectionTitle: { fontSize: 17, color: '#10251D', fontWeight: '700', marginTop: 4 },
+  action: { minHeight: 48, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#DCF1E8' },
+  actionText: { color: '#005B44', fontWeight: '700', fontSize: 15, textAlign: 'center' },
+  destructiveAction: { borderWidth: 1, borderColor: '#A3262E', backgroundColor: '#FFF8F6' },
+  destructiveText: { color: '#A3262E' },
+  disabledAction: { opacity: 0.5 },
+  pressedAction: { opacity: 0.75 },
   body: { fontSize: 16, color: '#1B2421' },
-  input: { borderWidth: 1, borderColor: '#6B7A74', borderRadius: 4, padding: 12, color: '#1B2421' },
+  input: { borderWidth: 1, borderColor: '#6B7A74', borderRadius: 12, padding: 12, minHeight: 48, backgroundColor: '#FFFFFF', color: '#1B2421' },
 });

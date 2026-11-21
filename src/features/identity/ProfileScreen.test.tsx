@@ -20,12 +20,12 @@ vi.mock('react-native', async () => {
     react.createElement(name, props, children);
   return {
     ActivityIndicator: element('activity'), ScrollView: element('scroll'), Text: element('text'),
-    TextInput: element('input'), Button: element('button'), StyleSheet: { create: (styles: unknown) => styles },
+    TextInput: element('input'), View: element('view'), Pressable: element('button'), StyleSheet: { create: (styles: unknown) => styles },
   };
 });
 
 function button(renderer: ReactTestRenderer, title: string) {
-  return renderer.root.findAllByType('button').find((node) => node.props.title === title);
+  return renderer.root.findAllByType('button').find((node) => node.props.accessibilityLabel === title);
 }
 
 describe('ProfileScreen — exclusão', () => {

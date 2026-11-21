@@ -45,7 +45,7 @@ export default function ConfirmEmailScreen() {
 
   return (
     <SafeAreaView edges={environment.demoMode ? [] : ['top']} style={styles.safeArea}><ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.brand} accessibilityLabel="Serviço Doméstico"><View style={styles.brandIcon}><MaterialCommunityIcons name="home-outline" size={25} color="#FFFFFF" /></View><Text style={styles.brandText}>Serviço{'\n'}Doméstico</Text></View>
+      <View style={styles.brand} accessibilityLabel="Serviço Doméstico"><View style={styles.brandIcon}><MaterialCommunityIcons name="home-outline" size={25} color="#FFFFFF" /><MaterialCommunityIcons name="star-four-points" size={10} color="#F8C562" style={styles.brandSparkle} /></View><Text style={styles.brandText}>Serviço{'\n'}Doméstico</Text></View>
       <Text variant="headlineSmall" accessibilityRole="header" style={styles.title}>Confirmação de e-mail</Text>
       <View accessibilityLiveRegion="polite" style={styles.status}>
         {state === 'loading' ? <ActivityIndicator size="large" accessibilityLabel="Confirmando e-mail" /> : <View style={[styles.icon, state === 'error' ? styles.errorIcon : state === 'uncertain' ? styles.uncertainIcon : null]}><MaterialCommunityIcons name={state === 'success' ? 'check-circle-outline' : 'alert-circle-outline'} size={32} color={state === 'success' ? '#005B44' : state === 'uncertain' ? '#614900' : '#A3262E'} /></View>}
@@ -66,6 +66,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F8F4EB' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   brandIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#005B44', alignItems: 'center', justifyContent: 'center' },
+  brandSparkle: { position: 'absolute', top: 2, right: 2 },
   brandText: { fontSize: 16, lineHeight: 19, color: '#10251D', fontWeight: 'bold' },
   status: { alignItems: 'center', gap: 16, padding: 24, borderWidth: 1, borderColor: '#DDDAD1', borderRadius: 16, backgroundColor: '#FFFDFA' },
   icon: { width: 64, height: 64, borderRadius: 16, backgroundColor: '#DCF1E8', justifyContent: 'center', alignItems: 'center' },

@@ -34,6 +34,25 @@ it('mostra erros ao tentar entrar sem enviar dados inválidos', async () => {
   await act(async () => view.unmount());
 });
 
+it('direciona o foco para o primeiro campo inválido', async () => {
+  const emailFocus = vi.fn();
+  const passwordFocus = vi.fn();
+  let view!: ReactTestRenderer;
+  await act(async () => {
+    view = create(<LoginScreen />, { createNodeMock: (element) => element.type === 'input'
+      ? { focus: (element.props as { accessibilityLabel?: string }).accessibilityLabel === 'E-mail' ? emailFocus : passwordFocus }
+      : null });
+  });
+  await act(async () => { await view.root.findByType('button').props.onPress(); });
+  expect(emailFocus).toHaveBeenCalledOnce();
+  expect(passwordFocus).not.toHaveBeenCalled();
+  await act(async () => view.root.findAllByType('input')[0].props.onChangeText('teste@example.invalid'));
+  await act(async () => { await view.root.findByType('button').props.onPress(); });
+  expect(passwordFocus).toHaveBeenCalledOnce();
+  expect(mocks.login).not.toHaveBeenCalled();
+  await act(async () => view.unmount());
+});
+
 it('preserva os dados e orienta após credenciais recusadas', async () => {
   mocks.login.mockRejectedValueOnce(new HttpProblemError({ status: 401, title: 'Não autorizado' }));
   let view!: ReactTestRenderer;

@@ -1,8 +1,8 @@
 import { Tabs, useRouter } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { PlatformPressable } from '@react-navigation/elements';
-import { useState } from 'react';
-import { Alert, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Keyboard, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarButtonProps, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useAuth } from '@/src/context/AuthContext';
@@ -24,7 +24,14 @@ function FocusableTabButton({ style, onFocus, onBlur, ...props }: BottomTabBarBu
 function AccessibleTabs({ state, descriptors, navigation, canManageProperties }: BottomTabBarProps & { canManageProperties: boolean }) {
   const insets = useSafeAreaInsets();
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
   const items = state.routes.filter((route) => route.name !== 'conta' && (canManageProperties ? !['agenda', 'profissional-perfil'].includes(route.name) : !['home', 'imoveis'].includes(route.name)));
+  if (keyboardVisible) return null;
   return <View style={{ flexDirection: 'row', flexWrap: 'wrap', backgroundColor: 'white', paddingBottom: insets.bottom }}>
     {items.map((route) => {
       const index = state.routes.findIndex((item) => item.key === route.key);
@@ -70,6 +77,7 @@ function RoleTabs() {
     <Tabs tabBar={fontScale > 1.3 ? (props) => <AccessibleTabs {...props} canManageProperties={isClient} /> : undefined} screenOptions={{
       tabBarActiveTintColor: '#175E55',
       tabBarInactiveTintColor: '#465550',
+      tabBarHideOnKeyboard: true,
       tabBarButton: (props) => <FocusableTabButton {...props} />,
       tabBarStyle: { height: 64 + insets.bottom, backgroundColor: '#FFFFFF', borderTopColor: '#D5DFD8' },
       headerStyle: { backgroundColor: '#FAF6EE' },

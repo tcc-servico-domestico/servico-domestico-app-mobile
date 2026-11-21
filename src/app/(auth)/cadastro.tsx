@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, Text, View, type TextInput as NativeTextInput } from 'react-native';
 import { useNavigation, usePreventRemove } from '@react-navigation/native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { usePrototypeFonts } from '@/src/context/TypographyContext';
@@ -14,6 +14,8 @@ export default function CadastroScreen() {
   const navigation = useNavigation();
   const { register } = useAuth();
   const customFonts = usePrototypeFonts();
+  const emailInput = useRef<NativeTextInput>(null);
+  const senhaInput = useRef<NativeTextInput>(null);
   const [mostrarSenha, setMostrarSenha] = useState(false);
 
   const [email, setEmail] = useState('');
@@ -40,7 +42,12 @@ export default function CadastroScreen() {
     if (submitting) return;
     setEmailTouched(true);
     setSenhaTouched(true);
-    if (!validateIdentityForm(email, senha, 'registration', { email: true, password: true }).canSubmit) return;
+    const result = validateIdentityForm(email, senha, 'registration', { email: true, password: true });
+    if (!result.canSubmit) {
+      if (result.emailError) emailInput.current?.focus();
+      else if (result.passwordError) senhaInput.current?.focus();
+      return;
+    }
     setSubmitting(true);
     setMessage(null);
     setError(null);
@@ -67,7 +74,7 @@ export default function CadastroScreen() {
 
   if (message) return <ScrollView contentContainerStyle={styles.container}>
     <View style={styles.brand} accessibilityLabel="Serviço Doméstico">
-      <View style={styles.brandIcon}><MaterialCommunityIcons name="home-outline" size={25} color="#FFFFFF" /></View>
+      <View style={styles.brandIcon}><MaterialCommunityIcons name="home-outline" size={25} color="#FFFFFF" /><MaterialCommunityIcons name="star-four-points" size={10} color="#F8C562" style={styles.brandSparkle} /></View>
       <Text style={[styles.brandText, customFonts && { fontFamily: 'BricolageBold' }]}>Serviço{'\n'}Doméstico</Text>
     </View>
     <Text accessibilityRole="header" style={[styles.title, customFonts && { fontFamily: 'BricolageExtraBold' }]}>Confirme seu e-mail</Text>
@@ -91,7 +98,7 @@ export default function CadastroScreen() {
           <MaterialCommunityIcons name="arrow-left" size={24} color="#005B44" />
         </TouchableOpacity>
         <View style={styles.brandMark} accessibilityLabel="Serviço Doméstico">
-          <View style={styles.brandIcon}><MaterialCommunityIcons name="home-outline" size={25} color="#FFFFFF" /></View>
+          <View style={styles.brandIcon}><MaterialCommunityIcons name="home-outline" size={25} color="#FFFFFF" /><MaterialCommunityIcons name="star-four-points" size={10} color="#F8C562" style={styles.brandSparkle} /></View>
           <Text style={[styles.brandText, customFonts && { fontFamily: 'BricolageBold' }]}>Serviço{'\n'}Doméstico</Text>
         </View>
       </View>
@@ -107,6 +114,7 @@ export default function CadastroScreen() {
       <Text style={styles.fieldLabel}>E-mail *</Text>
 
       <TextInput
+        ref={emailInput}
         value={email}
         onChangeText={(value) => { setEmail(value); setFieldErrors((current) => ({ ...current, email: undefined })); if (!submissionUncertain) setError(null); }}
         onBlur={() => setEmailTouched(true)}
@@ -124,11 +132,12 @@ export default function CadastroScreen() {
         accessibilityHint={emailError ?? 'Campo obrigatório.'}
         error={Boolean(emailError)}
       />
+      <Text style={styles.fieldHint}>Você vai receber um link para confirmar seu e-mail.</Text>
       {emailError ? <HelperText type="error" accessibilityLiveRegion="polite">{emailError}</HelperText> : null}
-      {!emailError ? <Text style={styles.fieldHint}>Você vai receber um link para confirmar seu e-mail.</Text> : null}
 
       <Text style={styles.fieldLabel}>Senha *</Text>
       <TextInput
+        ref={senhaInput}
         value={senha}
         onChangeText={(value) => { setSenha(value); setFieldErrors((current) => ({ ...current, password: undefined })); if (!submissionUncertain) setError(null); }}
         onBlur={() => setSenhaTouched(true)}
@@ -146,8 +155,8 @@ export default function CadastroScreen() {
         accessibilityHint={senhaError ?? 'Mínimo de 8 caracteres.'}
         error={Boolean(senhaError)}
       />
-      {senhaError ? <HelperText type="error" accessibilityLiveRegion="polite">{senhaError}</HelperText> : null}
       {!senhaError ? <Text style={styles.fieldHint}>Use pelo menos 8 caracteres.</Text> : null}
+      {senhaError ? <HelperText type="error" accessibilityLiveRegion="polite">{senhaError}</HelperText> : null}
 
       <Button
         mode="contained"
@@ -184,6 +193,7 @@ const styles = StyleSheet.create({
   brandMark: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   backButton: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', marginLeft: -12 },
   brandIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#005B44', alignItems: 'center', justifyContent: 'center' },
+  brandSparkle: { position: 'absolute', top: 2, right: 2 },
   brandText: { fontSize: 16, lineHeight: 19, color: '#10251D', fontWeight: 'bold' },
   description: { color: '#40534B', marginBottom: 12 },
   fieldLabel: { color: '#10251D', fontSize: 15, fontWeight: 'bold', marginTop: 8 },

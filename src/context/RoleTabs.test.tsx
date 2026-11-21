@@ -5,12 +5,14 @@ import TabsLayout from '../app/(tabs)/_layout';
 
 const mocks = vi.hoisted(() => ({
   session: { userId: 'dual', roles: ['Cliente', 'Profissional'] as string[] },
-  alert: vi.fn(), replace: vi.fn(), push: vi.fn(), logout: vi.fn(),
+  alert: vi.fn(), replace: vi.fn(), push: vi.fn(), logout: vi.fn(), fontScale: 1,
+  keyboardListeners: {} as Record<string, () => void>,
 }));
 vi.mock('@/src/context/AuthContext', () => ({ useAuth: () => ({ session: mocks.session, logout: mocks.logout }) }));
 vi.mock('expo-router', async () => {
   const react = await import('react');
-  const Tabs = Object.assign(({ screenOptions, children }: any) => react.createElement('tabs', null, screenOptions.headerRight(), children), {
+  const Tabs = Object.assign(({ screenOptions, children, tabBar }: any) => react.createElement('tabs', { hideOnKeyboard: screenOptions.tabBarHideOnKeyboard }, screenOptions.headerRight(), children,
+    tabBar?.({ state: { routes: [{ key: 'home-key', name: 'home' }], index: 0 }, descriptors: { 'home-key': { options: { title: 'Início', tabBarAccessibilityLabel: 'Ir para início' } } }, navigation: {} })), {
     Screen: ({ name, options }: any) => react.createElement('screen', { name, ...options }),
   });
   return { Tabs, useRouter: () => ({ replace: mocks.replace, push: mocks.push }) };
@@ -18,7 +20,7 @@ vi.mock('expo-router', async () => {
 vi.mock('react-native', async () => {
   const react = await import('react');
   const element = (name: string) => ({ children, ...props }: any) => react.createElement(name, props, children);
-  return { Alert: { alert: mocks.alert }, Pressable: element('button'), Text: element('text'), View: element('view'), useWindowDimensions: () => ({ fontScale: 1 }) };
+  return { Alert: { alert: mocks.alert }, Keyboard: { addListener: (event: string, callback: () => void) => { mocks.keyboardListeners[event] = callback; return { remove: () => { delete mocks.keyboardListeners[event]; } }; } }, Pressable: element('button'), Text: element('text'), View: element('view'), useWindowDimensions: () => ({ fontScale: mocks.fontScale }) };
 });
 vi.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ bottom: 0 }) }));
 vi.mock('@expo/vector-icons/MaterialCommunityIcons', () => ({ default: () => null }));
@@ -29,6 +31,8 @@ describe('alternância de experiência', () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     vi.clearAllMocks();
     mocks.session = { userId: 'dual', roles: ['Cliente', 'Profissional'] };
+    mocks.fontScale = 1;
+    mocks.keyboardListeners = {};
   });
 
   it('avisa sobre rascunhos e troca somente após confirmação', async () => {
@@ -90,6 +94,20 @@ describe('alternância de experiência', () => {
     expect(account.props.href).toBeNull();
     await act(async () => view.root.findAllByType('button').find((node) => node.props.accessibilityLabel === 'Minha conta')!.props.onPress());
     expect(mocks.push).toHaveBeenCalledWith('/(tabs)/conta');
+    await act(async () => view.unmount());
+  });
+
+  it('oculta a barra com o teclado também ao usar texto ampliado', async () => {
+    mocks.fontScale = 2;
+    let view!: ReactTestRenderer;
+    await act(async () => { view = create(<TabsLayout />); });
+    expect(view.root.findByType('tabs' as React.ElementType).props.hideOnKeyboard).toBe(true);
+    const tabs = () => view.root.findAllByType('button').filter((node) => node.props.accessibilityRole === 'tab');
+    expect(tabs()).toHaveLength(1);
+    await act(async () => mocks.keyboardListeners.keyboardDidShow());
+    expect(tabs()).toHaveLength(0);
+    await act(async () => mocks.keyboardListeners.keyboardDidHide());
+    expect(tabs()).toHaveLength(1);
     await act(async () => view.unmount());
   });
 });

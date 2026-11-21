@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, ScrollView, Alert } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, Text, ScrollView, Alert, type TextInput as NativeTextInput } from 'react-native';
 import { TextInput, Button, Checkbox, HelperText } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -12,6 +12,8 @@ export default function LoginScreen() {
   const router = useRouter();
   const { login, sessionNotice } = useAuth();
   const customFonts = usePrototypeFonts();
+  const emailInput = useRef<NativeTextInput>(null);
+  const senhaInput = useRef<NativeTextInput>(null);
   const [mostrarSenha, setMostrarSenha] = useState(false);
 
   const [email, setEmail] = useState('');
@@ -30,7 +32,12 @@ export default function LoginScreen() {
     if (submitting) return;
     setEmailTouched(true);
     setSenhaTouched(true);
-    if (!validateIdentityForm(email, senha, 'login', { email: true, password: true }).canSubmit) return;
+    const result = validateIdentityForm(email, senha, 'login', { email: true, password: true });
+    if (!result.canSubmit) {
+      if (result.emailError) emailInput.current?.focus();
+      else if (result.passwordError) senhaInput.current?.focus();
+      return;
+    }
     setSubmitting(true);
     setError(null);
     setFieldErrors({});
@@ -56,7 +63,7 @@ export default function LoginScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.brand} accessibilityLabel="Serviço Doméstico">
-        <View style={styles.brandIcon}><MaterialCommunityIcons name="home-outline" size={25} color="#FFFFFF" /></View>
+        <View style={styles.brandIcon}><MaterialCommunityIcons name="home-outline" size={25} color="#FFFFFF" /><MaterialCommunityIcons name="star-four-points" size={10} color="#F8C562" style={styles.brandSparkle} /></View>
         <Text style={[styles.brandText, customFonts && { fontFamily: 'BricolageBold' }]}>Serviço{'\n'}Doméstico</Text>
       </View>
       <Text accessibilityRole="header" style={[styles.title, customFonts && { fontFamily: 'BricolageExtraBold' }]}>Entrar</Text>
@@ -69,6 +76,7 @@ export default function LoginScreen() {
       <Text style={styles.fieldLabel}>E-mail *</Text>
 
       <TextInput
+        ref={emailInput}
         value={email}
         onChangeText={(value) => { setEmail(value); setFieldErrors((current) => ({ ...current, email: undefined })); setError(null); }}
         onBlur={() => setEmailTouched(true)}
@@ -90,6 +98,7 @@ export default function LoginScreen() {
 
       <Text style={styles.fieldLabel}>Senha *</Text>
       <TextInput
+        ref={senhaInput}
         value={senha}
         onChangeText={(value) => { setSenha(value); setFieldErrors((current) => ({ ...current, password: undefined })); setError(null); }}
         onBlur={() => setSenhaTouched(true)}
@@ -166,6 +175,7 @@ const styles = StyleSheet.create({
   },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 22 },
   brandIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#005B44', alignItems: 'center', justifyContent: 'center' },
+  brandSparkle: { position: 'absolute', top: 2, right: 2 },
   brandText: { fontSize: 16, lineHeight: 19, color: '#10251D', fontWeight: 'bold' },
   description: { color: '#40534B', marginBottom: 12 },
   sessionNotice: { color: '#614900', backgroundColor: '#FFF1CF', borderRadius: 12, padding: 12 },
